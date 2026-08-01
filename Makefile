@@ -1,4 +1,4 @@
-.PHONY: clean db-clean db-reset venv activate format install db-init db-migrate db-seed
+.PHONY: clean db-clean db-reset venv activate format install db-init db-migrate db-seed frontend-install frontend-build
 -include .env
 
 ##############################################################################
@@ -10,7 +10,7 @@ PYTHON=${VENV_DIR}/bin/python
 ##############################################################################
 # Development set up
 ##############################################################################
-install: venv activate install-dev
+install: venv activate install-dev frontend-install frontend-build
 
 venv: # Create new venv if not exists
 	@echo "Creating new virtual environment $(GREEN_ITALIC)$(VENV_DIR)$(DEFAULT) if not exists..."
@@ -26,6 +26,16 @@ install-dev: # Install dev dependencies
 	@echo "Installing dev dependencies..."
 	$(PYTHON) -m pip install --upgrade pip
 	$(PYTHON) -m pip install -r requirements.txt
+	@echo "Done.\n"
+
+frontend-install: # Install frontend dependencies
+	@echo "Installing frontend dependencies..."
+	cd frontend && npm install
+	@echo "Done.\n"
+
+frontend-build: # Build the Vue frontend into app/static/dist
+	@echo "Building frontend..."
+	cd frontend && npm run build
 	@echo "Done.\n"
 
 ##############################################################################
