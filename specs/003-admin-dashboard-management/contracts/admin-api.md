@@ -7,6 +7,8 @@ Milestone 2's contract.
 
 ## GET /api/admin/dashboard
 
+Shown alongside "Welcome Admin" and the search bar in Section 1.
+
 **Responses**:
 - `200` —
   ```json
@@ -15,8 +17,11 @@ Milestone 2's contract.
 
 ## GET /api/admin/companies
 
+Backs both Registered Companies (`status=approved`) and Company Applications (`status=pending`).
+
 **Query params** (both optional): `status` (`pending` | `approved` | `rejected`), `q` (substring match
-on `company_name` or `industry`).
+on `company_name` or `industry` — used by Registered Companies' search, per research.md; Company
+Applications never passes `q`).
 
 **Responses**:
 - `200` —
@@ -24,6 +29,7 @@ on `company_name` or `industry`).
   [
     {
       "id": 1,
+      "user_id": 4,
       "username": "acme_corp",
       "company_name": "Acme Corp",
       "industry": "Software",
@@ -32,8 +38,12 @@ on `company_name` or `industry`).
     }
   ]
   ```
+  `user_id` is the id to pass to `POST /api/admin/users/<id>/toggle-active` — it's a `User` id,
+  distinct from the `Company` row id.
 
 ## POST /api/admin/companies/`<id>`/decision
+
+Used by Company Applications' Approve (green) and Reject buttons.
 
 **Request**:
 ```json
@@ -47,6 +57,8 @@ on `company_name` or `industry`).
 
 ## GET /api/admin/students
 
+Backs Registered Students.
+
 **Query params**: `q` (optional, substring match on `name`, the account's `username`, or `contact`).
 
 **Responses**:
@@ -55,6 +67,7 @@ on `company_name` or `industry`).
   [
     {
       "id": 1,
+      "user_id": 3,
       "username": "john_doe",
       "name": "John Doe",
       "contact": "john@example.com",
@@ -65,8 +78,10 @@ on `company_name` or `industry`).
 
 ## GET /api/admin/job-positions
 
-**Query params** (both optional): `status` (`pending` | `approved` | `rejected`), `q` (substring match
-on `title` or the owning Company's `company_name`).
+Backs Ongoing Drives. Always called with `status=ongoing` from the dashboard; `status` stays a query
+param (not hardcoded server-side) so a completed Drive can still be looked up directly if ever needed.
+
+**Query params**: `status` (`ongoing` | `completed`, optional — omitting it returns every Drive).
 
 **Responses**:
 - `200` —
@@ -75,26 +90,32 @@ on `title` or the owning Company's `company_name`).
     {
       "id": 1,
       "title": "Software Engineer",
+      "description": "Entry-level backend role.",
       "company_name": "Acme Corp",
-      "status": "pending",
+      "eligible_branches": "Computer Science",
+      "min_cgpa": 7.0,
+      "eligible_graduation_year": 2026,
+      "salary": 800000,
+      "skills_required": "Python, SQL",
+      "status": "ongoing",
       "application_deadline": "2026-09-01T00:00:00"
     }
   ]
   ```
+  The full field set is returned in the list response itself (not a separate detail endpoint) so the
+  "View Details" modal has everything it needs from the row already in memory.
 
-## POST /api/admin/job-positions/`<id>`/decision
+## POST /api/admin/job-positions/`<id>`/complete
 
-**Request**:
-```json
-{ "status": "rejected" }
-```
+Used by Ongoing Drives' "Mark as Complete" action. Not reversible from the UI.
 
 **Responses**:
-- `200` — `{ "id": 1, "status": "rejected" }`
-- `400` — `status` missing or not one of `approved`/`rejected`: `{ "error": "..." }`
-- `404` — no such Job Posting: `{ "error": "Job Posting not found" }`
+- `200` — `{ "id": 1, "status": "completed" }`
+- `404` — no such Drive: `{ "error": "Job Posting not found" }`
 
 ## GET /api/admin/applications
+
+Backs Student Applications. Read-only — no decision endpoint exists for this list.
 
 **Responses**:
 - `200` —
@@ -113,7 +134,8 @@ on `title` or the owning Company's `company_name`).
 
 ## POST /api/admin/users/`<id>`/toggle-active
 
-Flips `is_active` for a Company or Student account. Refuses the Admin account itself (FR-012).
+Flips `is_active` for a Company or Student account — the Blacklist/Whitelist action in both Registered
+Companies and Registered Students. Refuses the Admin account itself (FR-008).
 
 **Responses**:
 - `200` — `{ "id": 1, "is_active": false }`

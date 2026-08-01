@@ -7,234 +7,227 @@
 **Status**: Draft
 
 **Input**: Milestone 3 (per official Milestones doc) — "Admin Dashboard and Management (Flask+Vue)".
-Admin sees a dashboard of totals (students, companies, job postings, applications); approves/removes
-Company profiles; approves/removes job postings (placement drives) created by Companies; searches
-companies (by name/industry) and students (by name/ID/contact); views and manages all job postings and
-applications; blacklists/deactivates companies and students.
+Redesigned as a single-page dashboard per direct product clarification: **Section 1** — a welcome
+header, live totals, and one search bar that searches Companies and Students together. **Section 2** —
+five subsections: Registered Companies (blacklist/whitelist), Registered Students
+(blacklist/whitelist), Company Applications (approve/reject pending Companies), Ongoing Drives (view
+details, mark complete), Student Applications (read-only view).
+
+Business-flow clarification that shapes this spec: **Admin approval gates a Company's ability to
+create Drives at all** — once approved, a Company self-manages its own Drives end-to-end (create,
+accept Applications, mark complete) with no further per-Drive Admin approval. Admin's role over Drives
+in this milestone is oversight (view + mark complete), not gatekeeping.
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Admin sees the state of the whole platform at a glance (Priority: P1)
+### User Story 1 - Admin approves or rejects a Company so it can start creating Drives (Priority: P1)
 
-The Admin logs in and immediately sees how many Students, Companies, Job Postings, and Applications
-exist in the system right now.
+The Admin sees every Company account waiting for a decision in the "Company Applications" subsection
+and can approve or reject each one with one click. Approving is what actually unlocks a Company's
+ability to create Drives — there's no further per-Drive approval after this.
 
-**Why this priority**: This is the Admin's landing page and the cheapest possible slice to deliver —
-it needs nothing beyond counting rows already created in Milestones 1–2, and it gives the Admin (and
-whoever's grading this) an instant, verifiable signal that the dashboard is real.
+**Why this priority**: Until this exists, every Company is stuck pending forever and Milestone 4's
+"Company creates a Drive" work has nothing to build on.
 
-**Independent Test**: Log in as Admin, view the dashboard, and confirm the four counts match what a
-direct count of the database tables shows.
+**Independent Test**: Register a new Company (pending from Milestone 2), approve it from Company
+Applications, and confirm it now shows up as a Registered Company rather than a pending one; reject a
+second Company and confirm it never appears as Registered.
 
 **Acceptance Scenarios**:
 
-1. **Given** any number of Students, Companies, Job Postings, and Applications in the system, **When**
-   Admin opens the dashboard, **Then** it shows the current total count of each, matching the database.
-2. **Given** a brand-new Student, Company, Job Posting, or Application is created after the dashboard
-   was last loaded, **When** Admin reloads the dashboard, **Then** the counts reflect the new totals.
+1. **Given** a Company account with pending approval, **When** Admin clicks Approve in Company
+   Applications, **Then** its approval status becomes approved and it moves into Registered Companies.
+2. **Given** a Company account with pending approval, **When** Admin clicks Reject in Company
+   Applications, **Then** its approval status becomes rejected and it never appears in Registered
+   Companies.
+3. **Given** a rejected Company, **When** anyone looks at Company Applications afterward, **Then** it
+   no longer appears there either — it isn't stuck showing as pending once decided.
 
 ---
 
-### User Story 2 - Admin approves or rejects a Company so the approval gate from Milestone 2 means something (Priority: P1)
+### User Story 2 - Admin blacklists or whitelists a Company or Student (Priority: P1)
 
-The Admin sees every Company account waiting for a decision and can approve or reject each one; an
-approved Company can now use its company-only capabilities, and a rejected one stays blocked.
+In Registered Companies and Registered Students, each row has a single toggle button — labeled
+Blacklist when the account is active, Whitelist when it's already blacklisted — with a color that
+reflects the current state. Clicking it flips that account's ability to log in.
 
-**Why this priority**: Milestone 2 built the pending/approved gate but nothing to act on it — until
-this exists, every Company is stuck pending forever and Milestone 4's company-facing work can't be
-demoed end-to-end.
+**Why this priority**: This is the strongest oversight tool over already-enrolled accounts and it
+reuses Milestone 2's existing deactivation check directly — cheap to deliver, high value.
 
-**Independent Test**: Register a new Company (still pending from Milestone 2), have Admin approve it,
-and confirm the Company can now use a company-only capability; register a second Company and reject it,
-confirming it stays blocked.
-
-**Acceptance Scenarios**:
-
-1. **Given** a Company account with pending approval, **When** Admin approves it, **Then** its approval
-   status becomes approved and its company-only capabilities unlock immediately.
-2. **Given** a Company account with pending approval, **When** Admin rejects it, **Then** its approval
-   status becomes rejected and it stays blocked from company-only capabilities, the same as pending.
-3. **Given** a Company Admin has already approved or rejected, **When** Admin changes the decision
-   later, **Then** the new decision takes effect immediately (approval is not a one-way action).
-
----
-
-### User Story 3 - Admin approves or rejects a Job Posting before Students can see it (Priority: P2)
-
-The Admin reviews Job Postings submitted by Companies and approves or rejects each one; only approved
-postings are meant to be visible to Students once Milestone 5 builds that view.
-
-**Why this priority**: This mirrors Company approval but one layer down, and depends on at least one
-approved Company existing to post something — it's the natural next slice after User Story 2, and it
-has to exist before Milestone 5 can assume "visible postings are vetted."
-
-**Independent Test**: With an approved Company's Job Posting sitting pending, have Admin approve it and
-confirm its status changes to approved; post a second one and reject it, confirming its status becomes
-rejected.
+**Independent Test**: Blacklist an active Company or Student, confirm its login is now refused (per
+Milestone 2's existing deactivated-account check), then Whitelist it and confirm login works again.
 
 **Acceptance Scenarios**:
 
-1. **Given** a pending Job Posting from an approved Company, **When** Admin approves it, **Then** its
-   status becomes approved.
-2. **Given** a pending Job Posting, **When** Admin rejects it, **Then** its status becomes rejected and
-   it is not treated as an active posting.
-
----
-
-### User Story 4 - Admin finds a specific Company or Student without scrolling through everything (Priority: P2)
-
-The Admin searches Companies by name or industry, and searches Students by name, ID, or contact, and
-gets back just the matching accounts.
-
-**Why this priority**: Once even a modest number of test accounts exist, an unfiltered list becomes
-unusable for grading/demo purposes — this is a straightforward, independently testable slice that makes
-every other Admin capability easier to use, but nothing else depends on it existing first.
-
-**Independent Test**: With several Companies and Students seeded, search by a term matching only one of
-them and confirm only that one comes back; search by a term matching none and confirm an empty result,
-not an error.
-
-**Acceptance Scenarios**:
-
-1. **Given** several Company accounts, **When** Admin searches by a name or industry substring, **Then**
-   only Companies whose name or industry contains that substring are returned.
-2. **Given** several Student accounts, **When** Admin searches by a name, ID, or contact substring,
-   **Then** only Students matching that substring on any of those fields are returned.
-3. **Given** a search term matching no one, **When** Admin searches, **Then** the result is an empty
-   list, not an error.
-
----
-
-### User Story 5 - Admin can see and act on every Job Posting and Application in the system, not just pending ones (Priority: P2)
-
-Beyond the pending-approval queue from User Story 3, the Admin can browse every Job Posting (any status)
-and every Application (any status) across all Companies and Students, and can take the same actions on
-it as via the queue.
-
-**Why this priority**: Approval queues only ever show what's currently pending; oversight requires
-seeing the full picture (approved, rejected, closed postings; every application regardless of student or
-company) — this is what makes Milestone 3 an actual management view and not just a two-item approval
-inbox.
-
-**Independent Test**: With Job Postings and Applications in a mix of statuses, load the all-postings and
-all-applications views and confirm every record appears with its real current status, not just the
-pending ones.
-
-**Acceptance Scenarios**:
-
-1. **Given** Job Postings in a mix of statuses (pending, approved, rejected), **When** Admin views all
-   Job Postings, **Then** every one appears, tagged with its actual status.
-2. **Given** Applications across multiple Students and Companies, **When** Admin views all Applications,
-   **Then** every one appears, regardless of which Student or Company it belongs to.
-
----
-
-### User Story 6 - Admin blacklists a Company or Student that's misbehaving, and can undo it (Priority: P3)
-
-The Admin deactivates a Company's or Student's account outright, blocking it from logging in at all
-(reusing the same deactivation Milestone 2 already enforces at login), and can reactivate it later.
-
-**Why this priority**: This is a stronger, less frequently needed action than approval/rejection — it's
-valuable but the platform is fully usable for grading/demo purposes without it, so it's the last slice.
-
-**Independent Test**: Deactivate an active Company or Student account and confirm a subsequent login
-attempt with correct credentials is refused (per Milestone 2's existing deactivation check); reactivate
-it and confirm login succeeds again.
-
-**Acceptance Scenarios**:
-
-1. **Given** an active Company or Student account, **When** Admin deactivates it, **Then** it can no
-   longer log in, even with the correct password.
-2. **Given** a deactivated Company or Student account, **When** Admin reactivates it, **Then** it can
-   log in normally again.
-3. **Given** the one Admin account, **When** anyone attempts to deactivate it, **Then** the action is
+1. **Given** an active, registered Company or Student, **When** Admin clicks Blacklist on its row,
+   **Then** it can no longer log in, even with the correct password, and the button now reads Whitelist.
+2. **Given** a blacklisted Company or Student, **When** Admin clicks Whitelist on its row, **Then** it
+   can log in again, and the button now reads Blacklist.
+3. **Given** the one Admin account, **When** anyone attempts to blacklist it, **Then** the action is
    refused — there is no path in this milestone to lock out the only Admin.
+
+---
+
+### User Story 3 - Admin searches Registered Companies and Students from one search bar (Priority: P2)
+
+The Admin types into the one search field in Section 1 and clicks Search; both Registered Companies
+(matched on name or industry) and Registered Students (matched on name, username, or contact) filter
+down to whatever matches.
+
+**Why this priority**: Once even a modest number of accounts exist, scrolling both lists unfiltered
+becomes unusable for demo/grading purposes — independently valuable, but nothing else depends on it.
+
+**Independent Test**: With several Registered Companies and Students, search a term matching only one
+of them and confirm only that one shows in its respective list; search a term matching none and confirm
+an empty list, not an error, in both.
+
+**Acceptance Scenarios**:
+
+1. **Given** several Registered Companies, **When** Admin searches a name/industry substring, **Then**
+   Registered Companies narrows to only matches; Registered Students narrows the same way independently.
+2. **Given** a search term matching nobody, **When** Admin searches, **Then** both lists show empty,
+   not an error.
+3. **Given** the search field is cleared, **When** Admin searches (or reloads), **Then** both lists show
+   every Registered Company/Student again, unfiltered.
+
+---
+
+### User Story 4 - Admin oversees Ongoing Drives and marks them complete (Priority: P2)
+
+The "Ongoing Drives" subsection lists every Drive that isn't finished yet — Serial Number, Drive Name,
+a View Details action that opens a read-only modal with the Drive's full information, and a Mark as
+Complete action that closes it out.
+
+**Why this priority**: This is Admin's oversight window into Company-run Drives once Milestone 4 lets
+Companies create them — it depends conceptually on Drives existing, but this milestone's own
+verification seeds one directly so the capability can be demoed now.
+
+**Independent Test**: With an ongoing Drive, open its View Details modal and confirm the full
+information shows; click Mark as Complete and confirm it disappears from Ongoing Drives.
+
+**Acceptance Scenarios**:
+
+1. **Given** a Drive that is ongoing, **When** Admin clicks View Details, **Then** a read-only modal
+   shows that Drive's full information (title, description, eligibility, deadline, owning Company).
+2. **Given** an ongoing Drive, **When** Admin clicks Mark as Complete, **Then** its status becomes
+   completed and it no longer appears in Ongoing Drives.
+3. **Given** a Drive already marked complete, **When** anyone looks at Ongoing Drives afterward,
+   **Then** it stays gone — completing is not reversible from this milestone's UI.
+
+---
+
+### User Story 5 - Admin reviews every Student Application, read-only (Priority: P3)
+
+The "Student Applications" subsection lists every Application in the system — Serial Number, Student
+Name, Drive, Company, Date, and a View action opening a read-only modal with that Application's detail.
+Admin cannot change anything from this view; it's oversight, not a decision point.
+
+**Why this priority**: Valuable visibility, but the platform's core loop (Company approval → Drive
+oversight) is fully demoable without it, so it's the last slice.
+
+**Independent Test**: With several Applications across different Students and Companies, load Student
+Applications and confirm every one appears with correct details; open one's View modal and confirm the
+details match.
+
+**Acceptance Scenarios**:
+
+1. **Given** Applications from multiple Students and Companies, **When** Admin loads Student
+   Applications, **Then** every one appears, in order, none filtered out.
+2. **Given** any row in Student Applications, **When** Admin clicks View, **Then** a read-only modal
+   shows that Application's Student, Drive, Company, Date, and current status — with no action
+   available to change it.
 
 ---
 
 ### Edge Cases
 
-- What happens if Admin tries to approve/reject a Company or Job Posting that doesn't exist (bad ID)?
-  The action is refused with a clear "not found," nothing is changed.
-- What happens if Admin approves a Job Posting belonging to a Company that isn't itself approved? This
-  should not normally be possible since posting is a company-only capability gated on approval
-  (Milestone 4), but if it happens anyway, the Job Posting approval succeeds independently of Company
-  status — Admin should re-check the Company separately; adding a defensive check here is out of scope.
-- What happens to Job Postings and Applications belonging to a Company that Admin later deactivates?
-  They are left exactly as they are — deactivation blocks future login and future company-only actions,
-  it does not touch existing records.
-- What happens if a search term is empty? It returns every Company or Student, exactly like no filter
-  was applied — not an error and not an empty result.
+- What happens if Admin tries to approve/reject a Company, or complete a Drive, that doesn't exist
+  (bad ID)? The action is refused with a clear "not found," nothing is changed.
+- What happens to a Company's own Drives if Admin later blacklists that Company? They are left exactly
+  as they are — blacklisting blocks future login, it does not touch existing Drives, Applications, or
+  Placements.
+- What happens if the search field is empty and Search is clicked anyway? It behaves exactly like no
+  filter was applied — returns everyone, not an error and not an empty result.
+- What happens to a rejected Company later — can Admin revisit and approve it? Out of scope for this
+  milestone's UI: Company Applications only ever shows accounts still pending, so a decision (either
+  direction) is final from the dashboard's point of view. Reversing one would require direct database
+  access, not a supported action here.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001**: System MUST show Admin a dashboard with the current total count of Students, Companies,
-  Job Postings, and Applications.
-- **FR-002**: System MUST let Admin list every Company account whose approval is pending.
-- **FR-003**: System MUST let Admin approve a Company, immediately unlocking its company-only
-  capabilities.
-- **FR-004**: System MUST let Admin reject a Company, keeping its company-only capabilities blocked the
-  same way pending does.
-- **FR-005**: System MUST let Admin change a Company's approval decision again later (approve after
-  rejecting, or vice versa).
-- **FR-006**: System MUST let Admin list every Job Posting whose approval is pending.
-- **FR-007**: System MUST let Admin approve or reject a Job Posting, and that decision MUST be reflected
-  the next time anyone reads that posting's status.
-- **FR-008**: System MUST let Admin search Companies by a substring match on name or industry.
-- **FR-009**: System MUST let Admin search Students by a substring match on name, ID, or contact.
-- **FR-010**: System MUST let Admin view every Job Posting in the system regardless of status, and every
-  Application in the system regardless of which Student or Company it belongs to.
-- **FR-011**: System MUST let Admin deactivate an active Company or Student account, and reactivate a
-  deactivated one, without touching that account's existing Job Postings, Applications, or Placements.
-- **FR-012**: System MUST refuse any attempt to deactivate the Admin account.
-- **FR-013**: System MUST refuse every Admin action in this milestone (approve/reject/search/deactivate)
-  to any caller that isn't logged in as Admin, per the role check already established in Milestone 2.
+- **FR-001**: System MUST show Admin live totals of Students, Companies, Drives, and Applications.
+- **FR-002**: System MUST let Admin list every Company account whose approval is still pending, in a
+  Company Applications view.
+- **FR-003**: System MUST let Admin approve a Company from that view, moving it into Registered
+  Companies and unlocking its ability to create Drives.
+- **FR-004**: System MUST let Admin reject a Company from that view, after which it appears in neither
+  Company Applications nor Registered Companies.
+- **FR-005**: System MUST let Admin list every approved (Registered) Company and every Student, each
+  with its current active/blacklisted state.
+- **FR-006**: System MUST let Admin blacklist an active Company or Student account, immediately
+  blocking its login per Milestone 2's existing deactivation check.
+- **FR-007**: System MUST let Admin whitelist a blacklisted Company or Student account, immediately
+  restoring its ability to log in.
+- **FR-008**: System MUST refuse any attempt to blacklist the Admin account.
+- **FR-009**: System MUST let Admin search Registered Companies by a substring match on name or
+  industry, and Registered Students by a substring match on name, username, or contact, from one
+  search action.
+- **FR-010**: System MUST let Admin list every Drive that is not yet completed (Ongoing Drives), and
+  view any one Drive's full detail on demand.
+- **FR-011**: System MUST let Admin mark an ongoing Drive as completed, after which it no longer
+  appears in Ongoing Drives.
+- **FR-012**: System MUST let Admin list every Application in the system and view any one's detail —
+  read-only, with no state-changing action available from this view.
+- **FR-013**: System MUST refuse every Admin action in this milestone to any caller that isn't logged
+  in as Admin, per the role check already established in Milestone 2.
 
 ### Key Entities
 
-- No new entities. This milestone only adds Admin-facing operations over Milestone 1's existing
-  `Company.approval_status` (now also usable as "rejected", not just "pending"/"approved"),
-  `JobPosition.status` (now also usable as "approved"/"rejected", not just its "pending" default), and
-  `User.is_active` (already used by Milestone 2's login check; this milestone adds the Admin action that
-  flips it).
+- No new entities. This milestone reuses Milestone 1's `Company.approval_status` (unchanged:
+  "pending"/"approved"/"rejected") and `User.is_active` (unchanged, already enforced at login).
+- **Changed meaning, same column**: `JobPosition.status` ("Drive" in this UI) no longer models an
+  Admin-approval workflow. Per the business-flow clarification above, only two values are meaningful
+  from this milestone forward: `"ongoing"` (default — a Company's Drive is open for Applications the
+  moment it exists) and `"completed"` (set only by the Mark as Complete action). The
+  "pending"/"approved"/"rejected" values Milestone 1 anticipated for this column are not used going
+  forward.
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
-- **SC-001**: Admin's dashboard counts always match a direct count of the underlying tables, with no
-  caching lag introduced in this milestone (real-time caching arrives later, in Milestone 8).
-- **SC-002**: A newly registered Company goes from pending to a working company-only capability in a
-  single Admin approval action, with no other manual step.
-- **SC-003**: Every Company or Student search returns exactly the accounts matching the given term on
-  the specified fields — no false positives, no missed matches, across a full pass of the User Story 4
-  scenarios.
-- **SC-004**: Admin can see 100% of Job Postings and Applications in the system through the "view all"
-  capability, not just whatever is currently pending.
-- **SC-005**: A deactivated Company or Student cannot log in, verified the same way Milestone 2 verified
-  it (SC-005 there) — 100% of attempts rejected regardless of password correctness.
-- **SC-006**: The Admin account can never be deactivated, across every attempt to do so.
+- **SC-001**: Admin's totals always match a direct count of the underlying tables.
+- **SC-002**: A newly registered Company goes from pending to appearing in Registered Companies (and
+  able to create Drives, once Milestone 4 exists) in a single Admin approval action.
+- **SC-003**: A rejected Company never appears in Registered Companies and drops out of Company
+  Applications immediately.
+- **SC-004**: Every search returns exactly the Companies/Students matching the given term on the
+  specified fields — no false positives, no missed matches, across a full pass of User Story 3.
+- **SC-005**: A blacklisted Company or Student cannot log in, 100% of attempts, verified the same way
+  Milestone 2 verified its deactivation check.
+- **SC-006**: The Admin account can never be blacklisted, across every attempt to do so.
+- **SC-007**: Marking a Drive complete removes it from Ongoing Drives 100% of the time, immediately.
+- **SC-008**: Every Application in the system appears in Student Applications — 100% coverage, verified
+  by comparing the list's count to a direct table count.
 
 ## Assumptions
 
-- "Approve and Remove Company profiles" / "Approve and Remove job posting/placement drives" (Milestone
-  doc wording) is read as **approve/reject via status field**, not permanent deletion. Milestone 1's
-  data model deliberately avoids cascading deletes from Company/JobPosition into Applications and
-  Placements so that history survives (see `specs/001-database-models-schema/data-model.md`); a hard
-  delete here would either violate that guarantee or leave orphaned rows. "Remove" a Company means
-  reject it (status becomes "rejected"); "Remove" a Job Posting means reject it the same way. The
-  separate "Blacklist/Deactivate" bullet already covers the stronger, account-level lockout action, so
-  reading "Remove" as reject (not delete) doesn't lose any capability the milestone doc asks for.
-- Deactivating a Company or Student is reusing Milestone 2's existing `is_active` flag and its
-  already-built login check — this milestone only needs to add the Admin-facing action that flips it,
-  not any new enforcement logic.
-- "Search companies (by name/industry)" and "Search students (by name/ID/contact)" are simple substring
-  matches on those fields, not fuzzy search or full-text search — nothing in either source document asks
-  for more.
-- "View and manage all job postings and applications" reuses the same approve/reject action as the
-  pending-queue views (User Stories 2–3); it's a broader read (every status, not just pending) over the
-  same underlying data, not a separate management capability.
+- The dashboard totals (FR-001) are shown in Section 1 alongside the "Welcome Admin" header and search
+  bar, even though they weren't explicitly called out in the single-page mockup — the official
+  Milestones doc requires them, and they fit there without disrupting the described layout.
+- "Company Applications" only ever shows pending Companies; there is no dashboard view of rejected
+  Companies in this milestone. A rejection is effectively final from the UI's point of view (see Edge
+  Cases) — reconsidering one is a direct-database action, out of scope here.
+- Registered Students has no approval concept (Students self-register and are immediately usable, per
+  Milestone 2) — its only per-row action is the same blacklist/whitelist toggle Registered Companies
+  has.
+- "Serial Number" in Ongoing Drives and Student Applications is a display-only row position, not a
+  stored field — it's whatever order the list comes back in, numbered from 1.
+- Since Milestone 4 (Company's own dashboard, where Drives are actually created) doesn't exist yet,
+  this milestone's verification seeds at least one Drive directly (e.g. via `flask shell`) to
+  demonstrate Ongoing Drives and Mark as Complete — the same approach already used for the previous
+  design's Job Posting verification.
 - No new Company/Student self-service actions are in scope here — this milestone is entirely
   Admin-facing. Company's and Student's own dashboards are Milestones 4 and 5.

@@ -14,24 +14,14 @@ pass in the browser against the Vue app.
     -d '{"username":"admin","password":"admin123"}'
   ```
 
-## US1 — Dashboard totals
-
-```bash
-curl -i -b /tmp/admin_cookies.txt http://localhost:5000/api/admin/dashboard
-# expect 200, {"students": N, "companies": N, "job_positions": N, "applications": N}
-```
-
-Register one more Student (Milestone 2's endpoint), reload the dashboard, and confirm `students`
-incremented by 1.
-
-## US2 — Company approve/reject
+## US1 — Company approve/reject unlocks Registered Companies
 
 ```bash
 curl -i -c /tmp/company_cookies.txt -X POST http://localhost:5000/api/auth/register/company \
   -H "Content-Type: application/json" \
   -d '{"username":"pending_co","password":"secret123","company_name":"Pending Co"}'
 
-curl -i -b /tmp/admin_cookies.txt http://localhost:5000/api/admin/companies?status=pending
+curl -i -b /tmp/admin_cookies.txt "http://localhost:5000/api/admin/companies?status=pending"
 # expect 200, includes "pending_co"
 
 curl -i -b /tmp/admin_cookies.txt -X POST \
@@ -39,43 +29,40 @@ curl -i -b /tmp/admin_cookies.txt -X POST \
   -H "Content-Type: application/json" -d '{"status":"approved"}'
 # expect 200, {"approval_status": "approved"}
 
-curl -i -b /tmp/company_cookies.txt http://localhost:5000/api/auth/me
-# expect 200, {"approval_status": "approved"}
+curl -i -b /tmp/admin_cookies.txt "http://localhost:5000/api/admin/companies?status=approved"
+# expect 200, now includes "pending_co"
+curl -i -b /tmp/admin_cookies.txt "http://localhost:5000/api/admin/companies?status=pending"
+# expect 200, no longer includes "pending_co"
 ```
 
-Repeat with `{"status":"rejected"}` on a second pending Company and confirm it stays blocked
-(re-check via `/api/auth/me` for that company's session).
+Repeat with a second Company and `{"status":"rejected"}` — confirm it never shows up under
+`status=approved`, and drops out of `status=pending` too.
 
-## US3 — Job Posting approve/reject
-
-Requires a Job Posting to exist. Until Milestone 4 adds a company-facing "create posting" endpoint,
-seed one directly:
+## US2 — Blacklist/whitelist, and Admin can't be touched
 
 ```bash
-flask shell
->>> from app.models import JobPosition, Company
->>> from app import db
->>> from datetime import datetime, timedelta
->>> co = Company.query.filter_by(company_name="Pending Co").first()
->>> jp = JobPosition(company_id=co.id, title="Backend Intern",
-...     application_deadline=datetime.utcnow() + timedelta(days=30))
->>> db.session.add(jp); db.session.commit()
-```
+curl -i -b /tmp/admin_cookies.txt -X POST \
+  http://localhost:5000/api/admin/users/<student_user_id>/toggle-active
+# expect 200, {"is_active": false}   <- this is "Blacklist"
 
-```bash
-curl -i -b /tmp/admin_cookies.txt http://localhost:5000/api/admin/job-positions?status=pending
-# expect 200, includes "Backend Intern"
+curl -i -X POST http://localhost:5000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"<that student>","password":"<their password>"}'
+# expect 403 - blacklisted, per Milestone 2's existing check
 
 curl -i -b /tmp/admin_cookies.txt -X POST \
-  http://localhost:5000/api/admin/job-positions/<id>/decision \
-  -H "Content-Type: application/json" -d '{"status":"approved"}'
-# expect 200, {"status": "approved"}
+  http://localhost:5000/api/admin/users/<student_user_id>/toggle-active
+# expect 200, {"is_active": true}   <- this is "Whitelist" - login works again
+
+curl -i -b /tmp/admin_cookies.txt -X POST \
+  http://localhost:5000/api/admin/users/<admin_user_id>/toggle-active
+# expect 403, "Cannot deactivate the Admin account"
 ```
 
-## US4 — Search
+## US3 — Search Registered Companies and Students together
 
 ```bash
-curl -i -b /tmp/admin_cookies.txt "http://localhost:5000/api/admin/companies?q=acme"
+curl -i -b /tmp/admin_cookies.txt "http://localhost:5000/api/admin/companies?status=approved&q=acme"
 # expect 200, only companies with "acme" in name/industry
 
 curl -i -b /tmp/admin_cookies.txt "http://localhost:5000/api/admin/students?q=doe"
@@ -85,35 +72,40 @@ curl -i -b /tmp/admin_cookies.txt "http://localhost:5000/api/admin/students?q=no
 # expect 200, []
 ```
 
-## US5 — View all Job Postings and Applications regardless of status
+## US4 — Ongoing Drives: view details and mark complete
+
+No Milestone-4 "create Drive" endpoint exists yet, so seed one directly:
 
 ```bash
-curl -i -b /tmp/admin_cookies.txt http://localhost:5000/api/admin/job-positions
-# expect 200, every posting (pending, approved, rejected) - no status filter applied
-
-curl -i -b /tmp/admin_cookies.txt http://localhost:5000/api/admin/applications
-# expect 200, every application across every student and company
+flask shell
+>>> from app.models import JobPosition, Company
+>>> from app import db
+>>> from datetime import datetime, timedelta
+>>> co = Company.query.filter_by(company_name="Acme Corp").first()
+>>> jp = JobPosition(company_id=co.id, title="Backend Intern",
+...     application_deadline=datetime.utcnow() + timedelta(days=30))
+>>> db.session.add(jp); db.session.commit()
+>>> jp.status  # expect "ongoing" - the new default
 ```
 
-## US6 — Deactivate/reactivate, and Admin can't be touched
+```bash
+curl -i -b /tmp/admin_cookies.txt "http://localhost:5000/api/admin/job-positions?status=ongoing"
+# expect 200, includes "Backend Intern" with full detail fields
+
+curl -i -b /tmp/admin_cookies.txt -X POST \
+  http://localhost:5000/api/admin/job-positions/<id>/complete
+# expect 200, {"status": "completed"}
+
+curl -i -b /tmp/admin_cookies.txt "http://localhost:5000/api/admin/job-positions?status=ongoing"
+# expect 200, "Backend Intern" no longer present
+```
+
+## US5 — Student Applications, read-only
 
 ```bash
-curl -i -b /tmp/admin_cookies.txt -X POST \
-  http://localhost:5000/api/admin/users/<student_user_id>/toggle-active
-# expect 200, {"is_active": false}
-
-curl -i -X POST http://localhost:5000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"<that student>","password":"<their password>"}'
-# expect 403 - deactivated, per Milestone 2's existing check
-
-curl -i -b /tmp/admin_cookies.txt -X POST \
-  http://localhost:5000/api/admin/users/<student_user_id>/toggle-active
-# expect 200, {"is_active": true} - login works again
-
-curl -i -b /tmp/admin_cookies.txt -X POST \
-  http://localhost:5000/api/admin/users/<admin_user_id>/toggle-active
-# expect 403, "Cannot deactivate the Admin account"
+curl -i -b /tmp/admin_cookies.txt http://localhost:5000/api/admin/applications
+# expect 200, every application across every student and company - compare count to
+# a direct table count to confirm 100% coverage (SC-008)
 ```
 
 ## Role check (reused from Milestone 2)
@@ -129,9 +121,11 @@ curl -i -b /tmp/company_cookies.txt http://localhost:5000/api/admin/dashboard
 make frontend-build   # or: cd frontend && npm run dev
 ```
 
-Log in as Admin and confirm:
-- `/admin` shows real totals (not the Milestone 2 ping placeholder).
-- Links/tabs to Companies, Students, Job Postings, and Applications each load real data from the API
-  above.
-- Approving/rejecting a Company or Job Posting from the UI updates its status without a page reload.
-- Toggling a Student's active state from the UI reflects immediately in that row.
+Log in as Admin and confirm, all on the one `/admin` page:
+- "Welcome Admin" header with live totals.
+- The one search field filters Registered Companies and Registered Students together, leaving Company
+  Applications/Ongoing Drives/Student Applications untouched.
+- Approving/rejecting a Company in Company Applications moves/removes it correctly.
+- Blacklist/Whitelist buttons toggle color and label immediately.
+- Ongoing Drives' View Details opens a modal with full Drive info; Mark as Complete removes the row.
+- Student Applications' View opens a read-only modal with no action buttons inside it.
