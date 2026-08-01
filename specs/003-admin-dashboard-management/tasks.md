@@ -201,3 +201,44 @@ in the modal and confirm no action buttons are present.
 
 US2 (blacklist/whitelist) → US3 (search) → US4 (Ongoing Drives) → US5 (Student Applications) →
 Polish, validating at each checkpoint, then commit (T026).
+
+---
+
+## Phase 8: Post-Review Fixes
+
+Found during first review of the merged implementation.
+
+- [ ] T027 Fix `GET /api/admin/dashboard`'s `companies` count in `app/routes/admin.py` to
+  `Company.query.filter_by(approval_status="approved").count()` — it previously counted every
+  Company row, disagreeing with Registered Companies' own count (see research.md).
+- [ ] T028 [P] Create `frontend/src/components/CollapsibleSection.vue` (title prop, click-to-toggle
+  `v-show`, Bootstrap `.card` classes, no JS bundle — per research.md).
+- [ ] T029 Wrap each of `AdminHome.vue`'s five Section 2 subsections in T028's
+  `CollapsibleSection.vue` — Section 1 stays as-is, not collapsible — depends on T028.
+- [ ] T030 [P] Add a "Go back" button to `Modal.vue`'s footer that emits the same `close` event as
+  the existing × control.
+- [ ] T031 Verify: dashboard's companies total now matches Registered Companies' row count with a
+  mixed pending/approved/rejected dataset; each Section 2 subsection collapses/expands independently;
+  both modals close via "Go back".
+
+---
+
+## Phase 9: Post-Review Enhancements
+
+Requested after the Phase 8 fixes above.
+
+- [ ] T032 [P] Add `logo_path` to `Company`, `photo_path` to `Student` (`resume_path` already
+  existed), `location` to `JobPosition` in `app/models.py`; autogenerate + apply the migration.
+- [ ] T033 [P] Seed placeholder assets under `app/static/uploads/{photos,logos,resumes}/` and
+  reference them from `data-seeds/seed_data.py` — no real upload flow exists yet (Milestones 4/5).
+- [ ] T034 In `app/routes/admin.py`, add a `_static_url()` helper and include `logo_url` (Company),
+  `photo_url`/`resume_url` (Student), `location`/`company_logo_url` (Job Position), and
+  `student_photo_url`/`student_resume_url` (Application) in their respective payloads — depends on
+  T032, T033.
+- [ ] T035 In `AdminHome.vue`'s Application modal, show the student's photo and a "View Resume"
+  download link/button — depends on T034.
+- [ ] T036 In `AdminHome.vue`'s Drive modal, show the Drive's location and the owning Company's
+  logo — depends on T034.
+- [ ] T037 Change the Log out button's color to red (`btn-danger`) in `AdminHome.vue`.
+- [ ] T038 Verify: reseed, confirm photo/logo/resume render and the resume link downloads the
+  seeded placeholder file; confirm the Drive modal shows its location and the company's logo.

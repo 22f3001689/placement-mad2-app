@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { get, post } from '../api/http.js'
 import { logout } from '../state/auth.js'
 import Modal from '../components/Modal.vue'
+import CollapsibleSection from '../components/CollapsibleSection.vue'
 
 const router = useRouter()
 
@@ -86,7 +87,7 @@ onMounted(() => {
     <!-- Section 1: welcome, totals, search -->
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h1>Welcome Admin</h1>
-      <button class="btn btn-secondary" @click="onLogout">Log out</button>
+      <button class="btn btn-danger" @click="onLogout">Log out</button>
     </div>
 
     <div class="row g-3 mb-3" v-if="totals">
@@ -121,125 +122,154 @@ onMounted(() => {
       <button class="btn btn-outline-secondary" type="submit">Search</button>
     </form>
 
-    <!-- Section 2: five subsections -->
-    <h3>Registered Companies</h3>
-    <table class="table">
-      <tbody>
-        <tr v-for="c in registeredCompanies" :key="c.id">
-          <td>{{ c.company_name }}</td>
-          <td class="text-end">
-            <button
-              class="btn btn-sm"
-              :class="c.is_active ? 'btn-danger' : 'btn-success'"
-              @click="toggleActive(c)"
-            >
-              {{ c.is_active ? 'Blacklist' : 'Whitelist' }}
-            </button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <!-- Section 2: five collapsible subsections -->
+    <CollapsibleSection title="Registered Companies">
+      <table class="table">
+        <tbody>
+          <tr v-for="c in registeredCompanies" :key="c.id">
+            <td>{{ c.company_name }}</td>
+            <td class="text-end">
+              <button
+                class="btn btn-sm"
+                :class="c.is_active ? 'btn-danger' : 'btn-success'"
+                @click="toggleActive(c)"
+              >
+                {{ c.is_active ? 'Blacklist' : 'Whitelist' }}
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </CollapsibleSection>
 
-    <h3>Registered Students</h3>
-    <table class="table">
-      <tbody>
-        <tr v-for="s in registeredStudents" :key="s.id">
-          <td>{{ s.name }}</td>
-          <td class="text-end">
-            <button
-              class="btn btn-sm"
-              :class="s.is_active ? 'btn-danger' : 'btn-success'"
-              @click="toggleActive(s)"
-            >
-              {{ s.is_active ? 'Blacklist' : 'Whitelist' }}
-            </button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <CollapsibleSection title="Registered Students">
+      <table class="table">
+        <tbody>
+          <tr v-for="s in registeredStudents" :key="s.id">
+            <td>{{ s.name }}</td>
+            <td class="text-end">
+              <button
+                class="btn btn-sm"
+                :class="s.is_active ? 'btn-danger' : 'btn-success'"
+                @click="toggleActive(s)"
+              >
+                {{ s.is_active ? 'Blacklist' : 'Whitelist' }}
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </CollapsibleSection>
 
-    <h3>Company Applications</h3>
-    <table class="table">
-      <tbody>
-        <tr v-for="c in pendingCompanies" :key="c.id">
-          <td>{{ c.company_name }}</td>
-          <td class="text-end">
-            <button class="btn btn-sm btn-success me-1" @click="decideCompany(c, 'approved')">
-              Approve
-            </button>
-            <button class="btn btn-sm btn-outline-danger" @click="decideCompany(c, 'rejected')">
-              Reject
-            </button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <CollapsibleSection title="Company Applications">
+      <table class="table">
+        <tbody>
+          <tr v-for="c in pendingCompanies" :key="c.id">
+            <td>{{ c.company_name }}</td>
+            <td class="text-end">
+              <button class="btn btn-sm btn-success me-1" @click="decideCompany(c, 'approved')">
+                Approve
+              </button>
+              <button class="btn btn-sm btn-outline-danger" @click="decideCompany(c, 'rejected')">
+                Reject
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </CollapsibleSection>
 
-    <h3>Ongoing Drives</h3>
-    <table class="table">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Drive Name</th>
-          <th></th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="(d, i) in ongoingDrives" :key="d.id">
-          <td>{{ i + 1 }}</td>
-          <td>{{ d.title }}</td>
-          <td><button class="btn btn-sm btn-outline-primary" @click="selectedDrive = d">View details</button></td>
-          <td><button class="btn btn-sm btn-outline-success" @click="completeDrive(d)">Mark as complete</button></td>
-        </tr>
-      </tbody>
-    </table>
+    <CollapsibleSection title="Ongoing Drives">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Drive Name</th>
+            <th></th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(d, i) in ongoingDrives" :key="d.id">
+            <td>{{ i + 1 }}</td>
+            <td>{{ d.title }}</td>
+            <td><button class="btn btn-sm btn-outline-primary" @click="selectedDrive = d">View details</button></td>
+            <td><button class="btn btn-sm btn-outline-success" @click="completeDrive(d)">Mark as complete</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </CollapsibleSection>
 
-    <h3>Student Applications</h3>
-    <table class="table">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Name</th>
-          <th>Drive</th>
-          <th>Company</th>
-          <th>Date</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="(a, i) in applications" :key="a.id">
-          <td>{{ i + 1 }}</td>
-          <td>{{ a.student_name }}</td>
-          <td>{{ a.job_title }}</td>
-          <td>{{ a.company_name }}</td>
-          <td>{{ a.application_date }}</td>
-          <td><button class="btn btn-sm btn-outline-primary" @click="selectedApplication = a">View</button></td>
-        </tr>
-      </tbody>
-    </table>
+    <CollapsibleSection title="Student Applications">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Drive</th>
+            <th>Company</th>
+            <th>Date</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(a, i) in applications" :key="a.id">
+            <td>{{ i + 1 }}</td>
+            <td>{{ a.student_name }}</td>
+            <td>{{ a.job_title }}</td>
+            <td>{{ a.company_name }}</td>
+            <td>{{ a.application_date }}</td>
+            <td><button class="btn btn-sm btn-outline-primary" @click="selectedApplication = a">View</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </CollapsibleSection>
 
     <Modal :show="!!selectedDrive" title="Drive Details" @close="selectedDrive = null">
       <template v-if="selectedDrive">
-        <p><strong>Title:</strong> {{ selectedDrive.title }}</p>
-        <p><strong>Company:</strong> {{ selectedDrive.company_name }}</p>
-        <p><strong>Description:</strong> {{ selectedDrive.description }}</p>
-        <p><strong>Eligible Branches:</strong> {{ selectedDrive.eligible_branches }}</p>
-        <p><strong>Min CGPA:</strong> {{ selectedDrive.min_cgpa }}</p>
-        <p><strong>Eligible Graduation Year:</strong> {{ selectedDrive.eligible_graduation_year }}</p>
-        <p><strong>Salary:</strong> {{ selectedDrive.salary }}</p>
-        <p><strong>Skills Required:</strong> {{ selectedDrive.skills_required }}</p>
-        <p><strong>Deadline:</strong> {{ selectedDrive.application_deadline }}</p>
+        <div class="row">
+          <div class="col-8">
+            <p><strong>Job Title:</strong> {{ selectedDrive.title }}</p>
+            <p><strong>Job Description:</strong> {{ selectedDrive.description }}</p>
+            <p><strong>Location:</strong> {{ selectedDrive.location }}</p>
+            <p><strong>Salary:</strong> {{ selectedDrive.salary }}</p>
+          </div>
+          <div class="col-4 text-center">
+            <img
+              v-if="selectedDrive.company_logo_url"
+              :src="selectedDrive.company_logo_url"
+              alt="Company logo"
+              style="max-height: 4rem"
+              class="mb-2"
+            />
+            <div>{{ selectedDrive.company_name }}</div>
+          </div>
+        </div>
       </template>
     </Modal>
 
     <Modal :show="!!selectedApplication" title="Application Details" @close="selectedApplication = null">
       <template v-if="selectedApplication">
+        <img
+          v-if="selectedApplication.student_photo_url"
+          :src="selectedApplication.student_photo_url"
+          alt="Student photo"
+          style="max-height: 4rem"
+          class="mb-2"
+        />
         <p><strong>Student:</strong> {{ selectedApplication.student_name }}</p>
         <p><strong>Drive:</strong> {{ selectedApplication.job_title }}</p>
         <p><strong>Company:</strong> {{ selectedApplication.company_name }}</p>
         <p><strong>Date:</strong> {{ selectedApplication.application_date }}</p>
         <p><strong>Status:</strong> {{ selectedApplication.status }}</p>
+        <a
+          v-if="selectedApplication.student_resume_url"
+          :href="selectedApplication.student_resume_url"
+          download
+          class="btn btn-sm btn-outline-primary"
+        >
+          View Resume
+        </a>
       </template>
     </Modal>
   </div>
