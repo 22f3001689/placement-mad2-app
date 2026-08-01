@@ -3,62 +3,68 @@
 No open `[NEEDS CLARIFICATION]` markers were left in the spec — the decisions below resolve every
 technical unknown the Technical Context flagged.
 
-## Decision: "Remove" is a status change, not a row deletion
+## Decision: Drives get no per-Drive Admin approval — only Company approval gates them
 
-- **Decision**: Company approval and Job Posting approval both become a "decision" action that writes
-  `"approved"` or `"rejected"` into the existing `approval_status`/`status` columns. Nothing in this
-  milestone runs `db.session.delete()` on a `Company` or `JobPosition`.
-- **Rationale**: See spec.md's Assumptions — Milestone 1's data model deliberately has no cascading
-  delete from `Application`/`Placement` up to `JobPosition`/`Company`, specifically so that history
-  survives. A real delete here would either orphan those child rows or force adding the exact cascade
-  behavior Milestone 1 rejected. Reusing the status column is also less code than a delete path would
-  be.
-- **Alternatives considered**: Hard delete with cascading cleanup — rejected, contradicts Milestone 1's
-  explicit design intent and adds destructive-action complexity (confirmation flows, cascade rules)
-  the milestone doc's actual wording doesn't require.
+- **Decision**: Drop the original draft's `POST /api/admin/job-positions/<id>/decision` entirely.
+  `JobPosition.status` becomes `"ongoing"` (default) / `"completed"` only, set via one new
+  `POST /api/admin/job-positions/<id>/complete` endpoint.
+- **Rationale**: Direct product clarification: Admin approving a Company is what unlocks that
+  Company's ability to create Drives at all; once approved, the Company self-manages Drives end-to-end
+  (create, accept Applications, mark complete). A second, per-Drive Admin gate would duplicate a
+  decision Admin already made at the Company level.
+- **Alternatives considered**: Keeping the original `pending`/`approved`/`rejected` Job Posting
+  approval workflow from the first draft — rejected outright per the clarification; it modeled a
+  two-layer approval (Company, then each of its Drives) that isn't how the product actually works.
 
-## Decision: One "decision" endpoint per entity, not separate approve/reject routes
+## Decision: Single-page dashboard, not a router tree of sub-pages
 
-- **Decision**: `POST /api/admin/companies/<id>/decision` and
-  `POST /api/admin/job-positions/<id>/decision`, each taking `{"status": "approved" | "rejected"}` in
-  the body, instead of four separate `/approve` and `/reject` routes.
-- **Rationale**: Both actions are the same operation (write a status, validate it's an allowed value) —
-  one route with a validated enum body is less code than two near-identical routes, and it directly
-  supports FR-005's requirement to let Admin change a decision again later without needing a third
-  route.
-- **Alternatives considered**: Separate `/approve` and `/reject` routes per entity (four total) —
-  rejected as needless duplication for what's a one-line difference in behavior.
+- **Decision**: One `AdminHome.vue` view renders Section 1 (welcome + totals + search) and Section 2's
+  five subsections inline. The four `/admin/companies`, `/admin/students`, `/admin/job-postings`,
+  `/admin/applications` routes from the original draft are removed.
+- **Rationale**: Directly matches the requested layout — one page, two sections, five subsections
+  within the second. A router tree was reasonable for the original per-entity-page draft, but it's the
+  wrong shape for what's actually being built now.
+- **Alternatives considered**: Keeping the sub-pages and just changing what's on each — rejected,
+  since the request is explicitly for one page, not four.
 
-## Decision: One "toggle-active" endpoint, not separate deactivate/reactivate routes
+## Decision: One search bar, filtering two of the five subsections
 
-- **Decision**: `POST /api/admin/users/<id>/toggle-active` flips `User.is_active`, mirroring
-  `../hms-app-main/app/routes/admin.py`'s `blacklist_doctor`/`blacklist_patient` pattern
-  (`user.is_blacklisted = not user.is_blacklisted`) exactly, adapted to this project's `is_active`
-  column and JSON response instead of a flash-redirect.
-- **Rationale**: Same operation either direction (flip a boolean); a toggle is simpler than tracking
-  "which direction" client-side and calling two different routes. The endpoint returns the resulting
-  `is_active` value so the frontend always shows the true state without a second request.
-- **Alternatives considered**: Separate `/deactivate` and `/reactivate` routes — rejected as the same
-  unnecessary duplication as the approve/reject case above.
+- **Decision**: A single search input in Section 1 re-fetches both `GET /api/admin/companies?q=...`
+  and `GET /api/admin/students?q=...` together, updating Registered Companies and Registered Students.
+  It does not touch Company Applications, Ongoing Drives, or Student Applications.
+- **Rationale**: Matches the requested Section 1 description exactly ("search Students or companies");
+  the other three subsections are queues/oversight lists, not something the mockup describes as
+  searchable.
+- **Alternatives considered**: A per-subsection search box on every list — rejected as more UI than
+  requested for a first pass; nothing in the request asks to search Drives or Applications.
 
-## Decision: Substring search via SQLAlchemy `ilike`, reusing the reference project's approach
+## Decision: One toggle endpoint for blacklist/whitelist, reused across Companies and Students
 
-- **Decision**: Company search matches `company_name`/`industry`; Student search matches
-  `name`/`user.username` (used as the "ID" the spec refers to, since Student has no separate ID field
-  visible to Admin beyond its username and primary key)/`contact`. All via `or_(...ilike(f"%{q}%"))`,
-  the same construct `../hms-app-main/app/routes/admin.py` uses for its doctor/patient search.
-- **Rationale**: Directly reusable pattern (constitution Principle IV); `ilike` gives case-insensitive
-  substring matching with zero extra dependency, which is all FR-008/FR-009 ask for.
-- **Alternatives considered**: A dedicated full-text search (e.g. SQLite FTS5) — rejected as disproportionate
-  to a "substring match" requirement with no stated dataset-size problem to justify it.
+- **Decision**: Keep the single `POST /api/admin/users/<id>/toggle-active` from the original draft,
+  operating on `User.id`. The UI relabels it Blacklist/Whitelist (color-coded) instead of
+  Deactivate/Reactivate — same endpoint, same `is_active` column, only the button copy/color changed.
+- **Rationale**: This part of the original design already matched the request once relabeled; no
+  reason to introduce two endpoints (deactivate/reactivate) where one toggle already works, and it
+  still mirrors `../hms-app-main/app/routes/admin.py`'s blacklist-toggle pattern.
+- **Alternatives considered**: N/A — this decision is unchanged from the original draft.
 
-## Decision: The Admin-facing "view all" endpoints double as the approval queues
+## Decision: Hand-rolled `Modal.vue`, no Bootstrap JS bundle
 
-- **Decision**: `GET /api/admin/job-positions` and `GET /api/admin/companies` both accept an optional
-  `status` query parameter; omitting it returns every row (User Story 5's "view all"), passing
-  `status=pending` returns just the approval queue (User Story 2/3). No separate "pending queue"
-  endpoint exists.
-- **Rationale**: It's the same underlying query with one more `WHERE`, not two different capabilities —
-  building a second endpoint would duplicate the row-shaping code for no behavioral gain.
-- **Alternatives considered**: Separate `/companies/pending` and `/companies` endpoints — rejected as
-  the same needless duplication called out in the decision-endpoint and toggle-endpoint choices above.
+- **Decision**: A small shared component styled with Bootstrap's existing modal CSS classes
+  (`.modal`, `.modal-dialog`, `.modal-content`), shown/hidden with a plain `v-if` bound to a prop —
+  not Bootstrap's `data-bs-toggle`/JS bundle.
+- **Rationale**: The constitution's Bootstrap principle is CSS/styling, not a mandate to load
+  Bootstrap's JS; both modals needed here (Drive details, Application details) are read-only popups
+  with no interactive Bootstrap components (carousels, dropdowns) that would justify the extra script.
+  A `v-if` toggle is less code and one fewer script tag.
+- **Alternatives considered**: Loading Bootstrap's JS bundle via CDN and using its native modal
+  component — rejected as an unnecessary added dependency for two static, read-only popups.
+
+## Decision: Company approve/reject stays a single "decision" endpoint (unchanged from original draft)
+
+- **Decision**: `POST /api/admin/companies/<id>/decision` with `{"status": "approved" | "rejected"}`
+  is unchanged — Company Applications' Approve (green) and the newly-added Reject button both call it.
+- **Rationale**: Direct product clarification confirmed Reject should exist alongside Approve
+  ("for completeness... we have an option to blacklist anyway" was about a different, later state) —
+  the one-endpoint-two-values design from the original draft already supports this with no change.
+- **Alternatives considered**: N/A — reconfirmed, not revisited.
