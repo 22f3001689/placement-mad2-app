@@ -37,12 +37,13 @@ Applications never passes `q`).
       "company_name": "Acme Corp",
       "industry": "Software",
       "approval_status": "pending",
-      "is_active": true
+      "is_active": true,
+      "logo_url": "/static/uploads/logos/acme_corp.png"
     }
   ]
   ```
   `user_id` is the id to pass to `POST /api/admin/users/<id>/toggle-active` — it's a `User` id,
-  distinct from the `Company` row id.
+  distinct from the `Company` row id. `logo_url` is `null` if the Company has no logo on file.
 
 ## POST /api/admin/companies/`<id>`/decision
 
@@ -74,10 +75,15 @@ Backs Registered Students.
       "username": "john_doe",
       "name": "John Doe",
       "contact": "john@example.com",
-      "is_active": true
+      "is_active": true,
+      "photo_url": "/static/uploads/photos/john_doe.png",
+      "resume_url": "/static/uploads/resumes/john_doe.pdf"
     }
   ]
   ```
+  `photo_url`/`resume_url` are `null` if the Student has none on file. There is no upload endpoint
+  yet (Milestone 5 adds Student's own dashboard) — for now these are seeded directly, per
+  research.md.
 
 ## GET /api/admin/job-positions
 
@@ -95,6 +101,8 @@ param (not hardcoded server-side) so a completed Drive can still be looked up di
       "title": "Software Engineer",
       "description": "Entry-level backend role.",
       "company_name": "Acme Corp",
+      "company_logo_url": "/static/uploads/logos/acme_corp.png",
+      "location": "Bangalore",
       "eligible_branches": "Computer Science",
       "min_cgpa": 7.0,
       "eligible_graduation_year": 2026,
@@ -127,6 +135,8 @@ Backs Student Applications. Read-only — no decision endpoint exists for this l
     {
       "id": 1,
       "student_name": "John Doe",
+      "student_photo_url": "/static/uploads/photos/john_doe.png",
+      "student_resume_url": "/static/uploads/resumes/john_doe.pdf",
       "job_title": "Software Engineer",
       "company_name": "Acme Corp",
       "status": "applied",

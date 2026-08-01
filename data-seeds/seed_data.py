@@ -29,6 +29,7 @@ def seed_database():
             location="Bangalore",
             hr_contact="hr@acme.example",
             website="https://acme.example",
+            logo_path="uploads/logos/acme_corp.png",
             approval_status="approved",
         )
         db.session.add(company)
@@ -46,6 +47,8 @@ def seed_database():
             graduation_year=2026,
             cgpa=8.5,
             skills="Python, Flask, SQL",
+            resume_path="uploads/resumes/john_doe.pdf",
+            photo_path="uploads/photos/john_doe.png",
             contact="john.doe@example.com",
         )
         db.session.add(student)
@@ -61,6 +64,7 @@ def seed_database():
             eligible_graduation_year=2026,
             salary=800000,
             skills_required="Python, SQL",
+            location="Bangalore",
             application_deadline=datetime.utcnow() + timedelta(days=30),
             status="ongoing",
         )

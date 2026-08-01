@@ -87,7 +87,7 @@ onMounted(() => {
     <!-- Section 1: welcome, totals, search -->
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h1>Welcome Admin</h1>
-      <button class="btn btn-secondary" @click="onLogout">Log out</button>
+      <button class="btn btn-danger" @click="onLogout">Log out</button>
     </div>
 
     <div class="row g-3 mb-3" v-if="totals">
@@ -227,8 +227,16 @@ onMounted(() => {
 
     <Modal :show="!!selectedDrive" title="Drive Details" @close="selectedDrive = null">
       <template v-if="selectedDrive">
+        <img
+          v-if="selectedDrive.company_logo_url"
+          :src="selectedDrive.company_logo_url"
+          alt="Company logo"
+          style="max-height: 4rem"
+          class="mb-2"
+        />
         <p><strong>Title:</strong> {{ selectedDrive.title }}</p>
         <p><strong>Company:</strong> {{ selectedDrive.company_name }}</p>
+        <p><strong>Location:</strong> {{ selectedDrive.location }}</p>
         <p><strong>Description:</strong> {{ selectedDrive.description }}</p>
         <p><strong>Eligible Branches:</strong> {{ selectedDrive.eligible_branches }}</p>
         <p><strong>Min CGPA:</strong> {{ selectedDrive.min_cgpa }}</p>
@@ -241,11 +249,26 @@ onMounted(() => {
 
     <Modal :show="!!selectedApplication" title="Application Details" @close="selectedApplication = null">
       <template v-if="selectedApplication">
+        <img
+          v-if="selectedApplication.student_photo_url"
+          :src="selectedApplication.student_photo_url"
+          alt="Student photo"
+          style="max-height: 4rem"
+          class="mb-2"
+        />
         <p><strong>Student:</strong> {{ selectedApplication.student_name }}</p>
         <p><strong>Drive:</strong> {{ selectedApplication.job_title }}</p>
         <p><strong>Company:</strong> {{ selectedApplication.company_name }}</p>
         <p><strong>Date:</strong> {{ selectedApplication.application_date }}</p>
         <p><strong>Status:</strong> {{ selectedApplication.status }}</p>
+        <a
+          v-if="selectedApplication.student_resume_url"
+          :href="selectedApplication.student_resume_url"
+          download
+          class="btn btn-sm btn-outline-primary"
+        >
+          View Resume
+        </a>
       </template>
     </Modal>
   </div>

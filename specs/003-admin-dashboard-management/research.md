@@ -96,3 +96,19 @@ technical unknown the Technical Context flagged.
   ("for completeness... we have an option to blacklist anyway" was about a different, later state) —
   the one-endpoint-two-values design from the original draft already supports this with no change.
 - **Alternatives considered**: N/A — reconfirmed, not revisited.
+
+## Decision: Photo/logo/resume served as plain static files, no dedicated upload/download routes
+
+- **Decision**: `Student.photo_path`, `Student.resume_path`, `Company.logo_path` are relative paths
+  under `app/static/uploads/`, exposed to the frontend as `url_for('static', filename=...)` URLs. The
+  Student Applications modal's "View Resume" is a plain `<a href="..." download>` — no dedicated
+  authenticated download endpoint.
+- **Rationale**: No upload mechanism exists yet (Milestones 4/5 add Company's/Student's own
+  dashboards, where real uploads would happen) — for now these are seeded placeholder files. Since
+  Flask already serves `app/static/` unauthenticated (the built Vue bundle lives there too), adding a
+  separate authenticated route to gate access to a demo placeholder file would be complexity with no
+  real security benefit yet; the HTML5 `download` attribute is enough to trigger a browser download
+  from a same-origin static URL.
+- **Alternatives considered**: A dedicated `GET /api/admin/students/<id>/resume` route using
+  `send_file` — deferred until there's an actual reason to restrict access (e.g. once real resumes
+  exist post-Milestone-5); premature now.

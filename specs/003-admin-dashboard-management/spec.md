@@ -193,6 +193,10 @@ details match.
   moment it exists) and `"completed"` (set only by the Mark as Complete action). The
   "pending"/"approved"/"rejected" values Milestone 1 anticipated for this column are not used going
   forward.
+- **New fields on existing entities** (post-review addition, no new tables): `Company.logo_path`,
+  `Student.photo_path` (alongside Milestone 1's existing `Student.resume_path`), and
+  `JobPosition.location`. All nullable strings holding a path under `app/static/uploads/`; there is no
+  upload flow yet, so these are seeded directly (see Assumptions).
 
 ## Success Criteria *(mandatory)*
 
@@ -229,6 +233,11 @@ details match.
   Section 1 (welcome, totals, search) is not collapsible.
 - Both modals (Drive details, Application details) include a "Go back" button that closes them, in
   addition to the existing close (×) control.
+- The Application modal shows the applying Student's photo and a "View Resume" download action; the
+  Drive modal shows the Drive's location and the owning Company's logo. Since no upload flow exists in
+  this milestone (Company/Student self-service dashboards are Milestones 4/5), these are demonstrated
+  with seeded placeholder files rather than real uploaded content — the fields and rendering exist now
+  so a later milestone's upload feature has somewhere to write to.
 - "Company Applications" only ever shows pending Companies; there is no dashboard view of rejected
   Companies in this milestone. A rejection is effectively final from the UI's point of view (see Edge
   Cases) — reconsidering one is a direct-database action, out of scope here.
