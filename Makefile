@@ -57,8 +57,6 @@ db-migrate: # Run database migrations
 db-seed: # Seed database with sample data
 	@echo "Seeding database with sample data..."
 	cd $(shell pwd) && PYTHONPATH=. $(PYTHON) data-seeds/seed_data.py
-	cd $(shell pwd) && PYTHONPATH=. $(PYTHON) data-seeds/seed_doctor_details.py
-	cd $(shell pwd) && PYTHONPATH=. $(PYTHON) data-seeds/seed_patel_data.py
 	@echo "Done.\n"
 
 db-clean: # Drop database only (keeps migrations)
