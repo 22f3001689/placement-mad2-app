@@ -238,6 +238,11 @@ details match.
   this milestone (Company/Student self-service dashboards are Milestones 4/5), these are demonstrated
   with seeded placeholder files rather than real uploaded content — the fields and rendering exist now
   so a later milestone's upload feature has somewhere to write to.
+- The Drive modal's field set is deliberately narrowed to Job Title, Job Description, Location, and
+  Salary (per direct request), with the Company logo and name laid out to the right of those fields —
+  not the full field dump (eligible branches, min CGPA, eligible graduation year, skills required,
+  deadline) shown in the original draft. Those fields still exist on `JobPosition` and are still
+  returned by `GET /api/admin/job-positions`; they're just not rendered in this modal for now.
 - "Company Applications" only ever shows pending Companies; there is no dashboard view of rejected
   Companies in this milestone. A rejection is effectively final from the UI's point of view (see Edge
   Cases) — reconsidering one is a direct-database action, out of scope here.

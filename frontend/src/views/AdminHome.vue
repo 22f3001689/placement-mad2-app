@@ -227,23 +227,24 @@ onMounted(() => {
 
     <Modal :show="!!selectedDrive" title="Drive Details" @close="selectedDrive = null">
       <template v-if="selectedDrive">
-        <img
-          v-if="selectedDrive.company_logo_url"
-          :src="selectedDrive.company_logo_url"
-          alt="Company logo"
-          style="max-height: 4rem"
-          class="mb-2"
-        />
-        <p><strong>Title:</strong> {{ selectedDrive.title }}</p>
-        <p><strong>Company:</strong> {{ selectedDrive.company_name }}</p>
-        <p><strong>Location:</strong> {{ selectedDrive.location }}</p>
-        <p><strong>Description:</strong> {{ selectedDrive.description }}</p>
-        <p><strong>Eligible Branches:</strong> {{ selectedDrive.eligible_branches }}</p>
-        <p><strong>Min CGPA:</strong> {{ selectedDrive.min_cgpa }}</p>
-        <p><strong>Eligible Graduation Year:</strong> {{ selectedDrive.eligible_graduation_year }}</p>
-        <p><strong>Salary:</strong> {{ selectedDrive.salary }}</p>
-        <p><strong>Skills Required:</strong> {{ selectedDrive.skills_required }}</p>
-        <p><strong>Deadline:</strong> {{ selectedDrive.application_deadline }}</p>
+        <div class="row">
+          <div class="col-8">
+            <p><strong>Job Title:</strong> {{ selectedDrive.title }}</p>
+            <p><strong>Job Description:</strong> {{ selectedDrive.description }}</p>
+            <p><strong>Location:</strong> {{ selectedDrive.location }}</p>
+            <p><strong>Salary:</strong> {{ selectedDrive.salary }}</p>
+          </div>
+          <div class="col-4 text-center">
+            <img
+              v-if="selectedDrive.company_logo_url"
+              :src="selectedDrive.company_logo_url"
+              alt="Company logo"
+              style="max-height: 4rem"
+              class="mb-2"
+            />
+            <div>{{ selectedDrive.company_name }}</div>
+          </div>
+        </div>
       </template>
     </Modal>
 
