@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { get, post } from '../api/http.js'
 import { logout } from '../state/auth.js'
 import Modal from '../components/Modal.vue'
+import CollapsibleSection from '../components/CollapsibleSection.vue'
 
 const router = useRouter()
 
@@ -121,103 +122,108 @@ onMounted(() => {
       <button class="btn btn-outline-secondary" type="submit">Search</button>
     </form>
 
-    <!-- Section 2: five subsections -->
-    <h3>Registered Companies</h3>
-    <table class="table">
-      <tbody>
-        <tr v-for="c in registeredCompanies" :key="c.id">
-          <td>{{ c.company_name }}</td>
-          <td class="text-end">
-            <button
-              class="btn btn-sm"
-              :class="c.is_active ? 'btn-danger' : 'btn-success'"
-              @click="toggleActive(c)"
-            >
-              {{ c.is_active ? 'Blacklist' : 'Whitelist' }}
-            </button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <!-- Section 2: five collapsible subsections -->
+    <CollapsibleSection title="Registered Companies">
+      <table class="table">
+        <tbody>
+          <tr v-for="c in registeredCompanies" :key="c.id">
+            <td>{{ c.company_name }}</td>
+            <td class="text-end">
+              <button
+                class="btn btn-sm"
+                :class="c.is_active ? 'btn-danger' : 'btn-success'"
+                @click="toggleActive(c)"
+              >
+                {{ c.is_active ? 'Blacklist' : 'Whitelist' }}
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </CollapsibleSection>
 
-    <h3>Registered Students</h3>
-    <table class="table">
-      <tbody>
-        <tr v-for="s in registeredStudents" :key="s.id">
-          <td>{{ s.name }}</td>
-          <td class="text-end">
-            <button
-              class="btn btn-sm"
-              :class="s.is_active ? 'btn-danger' : 'btn-success'"
-              @click="toggleActive(s)"
-            >
-              {{ s.is_active ? 'Blacklist' : 'Whitelist' }}
-            </button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <CollapsibleSection title="Registered Students">
+      <table class="table">
+        <tbody>
+          <tr v-for="s in registeredStudents" :key="s.id">
+            <td>{{ s.name }}</td>
+            <td class="text-end">
+              <button
+                class="btn btn-sm"
+                :class="s.is_active ? 'btn-danger' : 'btn-success'"
+                @click="toggleActive(s)"
+              >
+                {{ s.is_active ? 'Blacklist' : 'Whitelist' }}
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </CollapsibleSection>
 
-    <h3>Company Applications</h3>
-    <table class="table">
-      <tbody>
-        <tr v-for="c in pendingCompanies" :key="c.id">
-          <td>{{ c.company_name }}</td>
-          <td class="text-end">
-            <button class="btn btn-sm btn-success me-1" @click="decideCompany(c, 'approved')">
-              Approve
-            </button>
-            <button class="btn btn-sm btn-outline-danger" @click="decideCompany(c, 'rejected')">
-              Reject
-            </button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <CollapsibleSection title="Company Applications">
+      <table class="table">
+        <tbody>
+          <tr v-for="c in pendingCompanies" :key="c.id">
+            <td>{{ c.company_name }}</td>
+            <td class="text-end">
+              <button class="btn btn-sm btn-success me-1" @click="decideCompany(c, 'approved')">
+                Approve
+              </button>
+              <button class="btn btn-sm btn-outline-danger" @click="decideCompany(c, 'rejected')">
+                Reject
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </CollapsibleSection>
 
-    <h3>Ongoing Drives</h3>
-    <table class="table">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Drive Name</th>
-          <th></th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="(d, i) in ongoingDrives" :key="d.id">
-          <td>{{ i + 1 }}</td>
-          <td>{{ d.title }}</td>
-          <td><button class="btn btn-sm btn-outline-primary" @click="selectedDrive = d">View details</button></td>
-          <td><button class="btn btn-sm btn-outline-success" @click="completeDrive(d)">Mark as complete</button></td>
-        </tr>
-      </tbody>
-    </table>
+    <CollapsibleSection title="Ongoing Drives">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Drive Name</th>
+            <th></th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(d, i) in ongoingDrives" :key="d.id">
+            <td>{{ i + 1 }}</td>
+            <td>{{ d.title }}</td>
+            <td><button class="btn btn-sm btn-outline-primary" @click="selectedDrive = d">View details</button></td>
+            <td><button class="btn btn-sm btn-outline-success" @click="completeDrive(d)">Mark as complete</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </CollapsibleSection>
 
-    <h3>Student Applications</h3>
-    <table class="table">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Name</th>
-          <th>Drive</th>
-          <th>Company</th>
-          <th>Date</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="(a, i) in applications" :key="a.id">
-          <td>{{ i + 1 }}</td>
-          <td>{{ a.student_name }}</td>
-          <td>{{ a.job_title }}</td>
-          <td>{{ a.company_name }}</td>
-          <td>{{ a.application_date }}</td>
-          <td><button class="btn btn-sm btn-outline-primary" @click="selectedApplication = a">View</button></td>
-        </tr>
-      </tbody>
-    </table>
+    <CollapsibleSection title="Student Applications">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Drive</th>
+            <th>Company</th>
+            <th>Date</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(a, i) in applications" :key="a.id">
+            <td>{{ i + 1 }}</td>
+            <td>{{ a.student_name }}</td>
+            <td>{{ a.job_title }}</td>
+            <td>{{ a.company_name }}</td>
+            <td>{{ a.application_date }}</td>
+            <td><button class="btn btn-sm btn-outline-primary" @click="selectedApplication = a">View</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </CollapsibleSection>
 
     <Modal :show="!!selectedDrive" title="Drive Details" @close="selectedDrive = null">
       <template v-if="selectedDrive">

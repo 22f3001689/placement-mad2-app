@@ -88,7 +88,8 @@ data-seeds/
 frontend/src/
 ├── router/index.js               # /admin is now the only Admin route (sub-routes removed)
 ├── components/
-│   └── Modal.vue                   # NEW: small reusable read-only modal
+│   ├── Modal.vue                   # small reusable read-only modal (+ "Go back" close button)
+│   └── CollapsibleSection.vue        # NEW: wraps each Section 2 subsection, click-to-toggle
 └── views/
     └── AdminHome.vue                 # REPLACES the Milestone 2 ping placeholder AND the
                                        # original 4-sub-page draft with one single-page dashboard
@@ -96,8 +97,9 @@ frontend/src/
 
 **Structure Decision**: Collapses back to one view file (`AdminHome.vue`) instead of the original
 draft's four separate views + four router entries — the actual requested design is a single page, so
-that's what the structure now reflects. One new `frontend/src/components/` directory for the shared
-`Modal.vue`, since two of the five subsections need one.
+that's what the structure now reflects. `frontend/src/components/` holds two small shared pieces:
+`Modal.vue` (two of the five subsections need one) and `CollapsibleSection.vue` (all five subsections
+in Section 2 use it; Section 1 does not).
 
 ## Complexity Tracking
 

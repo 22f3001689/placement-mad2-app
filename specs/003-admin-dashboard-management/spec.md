@@ -198,7 +198,9 @@ details match.
 
 ### Measurable Outcomes
 
-- **SC-001**: Admin's totals always match a direct count of the underlying tables.
+- **SC-001**: Admin's totals always match a direct count of the underlying tables — specifically, the
+  Companies total matches the count of Companies actually listed in Registered Companies (i.e. only
+  `approved` ones), not a raw count of every Company row regardless of status.
 - **SC-002**: A newly registered Company goes from pending to appearing in Registered Companies (and
   able to create Drives, once Milestone 4 exists) in a single Admin approval action.
 - **SC-003**: A rejected Company never appears in Registered Companies and drops out of Company
@@ -217,6 +219,16 @@ details match.
 - The dashboard totals (FR-001) are shown in Section 1 alongside the "Welcome Admin" header and search
   bar, even though they weren't explicitly called out in the single-page mockup — the official
   Milestones doc requires them, and they fit there without disrupting the described layout.
+- The Companies total counts only `approved` Companies, matching Registered Companies exactly — a
+  pending or rejected Company is not counted, since showing a total that doesn't match any visible list
+  on the page is confusing rather than informative (corrected after initial review: the first
+  implementation counted every Company row regardless of status, which visibly disagreed with
+  Registered Companies' own count).
+- Section 2's five subsections (Registered Companies, Registered Students, Company Applications,
+  Ongoing Drives, Student Applications) are each collapsible/expandable, independent of one another —
+  Section 1 (welcome, totals, search) is not collapsible.
+- Both modals (Drive details, Application details) include a "Go back" button that closes them, in
+  addition to the existing close (×) control.
 - "Company Applications" only ever shows pending Companies; there is no dashboard view of rejected
   Companies in this milestone. A rejection is effectively final from the UI's point of view (see Edge
   Cases) — reconsidering one is a direct-database action, out of scope here.

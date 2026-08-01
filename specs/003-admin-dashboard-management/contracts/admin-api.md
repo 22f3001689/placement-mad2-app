@@ -14,6 +14,9 @@ Shown alongside "Welcome Admin" and the search bar in Section 1.
   ```json
   { "students": 12, "companies": 5, "job_positions": 8, "applications": 23 }
   ```
+  `companies` counts only `approval_status == "approved"` Companies — matching what Registered
+  Companies actually lists. A pending or rejected Company isn't counted here, since it can't be
+  logged in "as a Company" in the sense this total implies (it can't create Drives yet, or ever).
 
 ## GET /api/admin/companies
 

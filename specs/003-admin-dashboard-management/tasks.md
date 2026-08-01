@@ -201,3 +201,22 @@ in the modal and confirm no action buttons are present.
 
 US2 (blacklist/whitelist) → US3 (search) → US4 (Ongoing Drives) → US5 (Student Applications) →
 Polish, validating at each checkpoint, then commit (T026).
+
+---
+
+## Phase 8: Post-Review Fixes
+
+Found during first review of the merged implementation.
+
+- [ ] T027 Fix `GET /api/admin/dashboard`'s `companies` count in `app/routes/admin.py` to
+  `Company.query.filter_by(approval_status="approved").count()` — it previously counted every
+  Company row, disagreeing with Registered Companies' own count (see research.md).
+- [ ] T028 [P] Create `frontend/src/components/CollapsibleSection.vue` (title prop, click-to-toggle
+  `v-show`, Bootstrap `.card` classes, no JS bundle — per research.md).
+- [ ] T029 Wrap each of `AdminHome.vue`'s five Section 2 subsections in T028's
+  `CollapsibleSection.vue` — Section 1 stays as-is, not collapsible — depends on T028.
+- [ ] T030 [P] Add a "Go back" button to `Modal.vue`'s footer that emits the same `close` event as
+  the existing × control.
+- [ ] T031 Verify: dashboard's companies total now matches Registered Companies' row count with a
+  mixed pending/approved/rejected dataset; each Section 2 subsection collapses/expands independently;
+  both modals close via "Go back".

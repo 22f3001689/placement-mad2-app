@@ -66,7 +66,7 @@ def dashboard():
     return jsonify(
         {
             "students": Student.query.count(),
-            "companies": Company.query.count(),
+            "companies": Company.query.filter_by(approval_status="approved").count(),
             "job_positions": JobPosition.query.count(),
             "applications": Application.query.count(),
         }

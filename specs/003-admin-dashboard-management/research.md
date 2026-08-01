@@ -60,6 +60,34 @@ technical unknown the Technical Context flagged.
 - **Alternatives considered**: Loading Bootstrap's JS bundle via CDN and using its native modal
   component — rejected as an unnecessary added dependency for two static, read-only popups.
 
+## Decision: Section 2's five subsections are collapsible via a hand-rolled `CollapsibleSection.vue`
+
+- **Decision**: A small shared component (Bootstrap `.card`/`.card-header`/`.card-body` classes, a
+  clickable header, content toggled with plain `v-show` bound to internal state) wraps each of
+  Section 2's five subsections. Section 1 is not wrapped in it — only Section 2's subsections are
+  collapsible, per direct request.
+- **Rationale**: Same reasoning as `Modal.vue`'s no-JS-bundle decision above — a click-to-toggle
+  `v-show` is simpler than wiring Bootstrap's `data-bs-toggle="collapse"` JS behavior for what's a
+  plain show/hide, and keeps the "Bootstrap for CSS, not JS" line consistent across the whole
+  dashboard rather than adding the JS bundle for this one feature and not the modals.
+- **Alternatives considered**: Bootstrap's native collapse component (`data-bs-toggle="collapse"`,
+  requiring the JS bundle) — rejected for the same reason the modal's JS-bundle alternative was
+  rejected; introducing the bundle for one feature after deliberately avoiding it for another would be
+  an inconsistent, one-off exception.
+
+## Decision: Dashboard's Companies total counts only approved Companies
+
+- **Decision**: `GET /api/admin/dashboard`'s `companies` field is
+  `Company.query.filter_by(approval_status="approved").count()`, not a raw `Company.query.count()`.
+- **Rationale**: Bug found in review — the first implementation counted every Company row (pending,
+  approved, and rejected alike), which visibly disagreed with Registered Companies' own count on the
+  same page (e.g. showing "3" in the totals strip while Registered Companies listed only 2). A total
+  that contradicts the one list it sits next to is actively misleading, not just imprecise.
+- **Alternatives considered**: Leaving it as a raw count of every Company row and re-labeling it "All
+  Companies" instead of fixing the number — rejected; a pending or rejected Company isn't a company
+  in the sense any other part of this dashboard treats it (it can't create Drives, it isn't
+  "Registered"), so counting it here has no use that outweighs the confusion it caused.
+
 ## Decision: Company approve/reject stays a single "decision" endpoint (unchanged from original draft)
 
 - **Decision**: `POST /api/admin/companies/<id>/decision` with `{"status": "approved" | "rejected"}`
