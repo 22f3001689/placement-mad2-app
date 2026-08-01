@@ -62,7 +62,7 @@ def seed_database():
             salary=800000,
             skills_required="Python, SQL",
             application_deadline=datetime.utcnow() + timedelta(days=30),
-            status="approved",
+            status="ongoing",
         )
         db.session.add(job_position)
         db.session.commit()

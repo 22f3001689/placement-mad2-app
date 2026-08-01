@@ -84,7 +84,7 @@ class JobPosition(db.Model):
     salary = db.Column(db.Integer, nullable=True)
     skills_required = db.Column(db.Text, nullable=True)
     application_deadline = db.Column(db.DateTime, nullable=False)
-    status = db.Column(db.String(20), nullable=False, default="pending")
+    status = db.Column(db.String(20), nullable=False, default="ongoing")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     company = db.relationship(
