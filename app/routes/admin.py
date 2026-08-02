@@ -1,14 +1,17 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, url_for
 from sqlalchemy import or_
 
 from app import db
 from app.decorators import role_required
 from app.models import Application, Company, JobPosition, Student, User
-from app.utils import static_url
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/api/admin")
 
 COMPANY_DECISION_STATUSES = ("approved", "rejected")
+
+
+def _static_url(path):
+    return url_for("static", filename=path) if path else None
 
 
 def _company_payload(company):
@@ -20,7 +23,7 @@ def _company_payload(company):
         "industry": company.industry,
         "approval_status": company.approval_status,
         "is_active": company.user.is_active,
-        "logo_url": static_url(company.logo_path),
+        "logo_url": _static_url(company.logo_path),
     }
 
 
@@ -32,21 +35,22 @@ def _student_payload(student):
         "name": student.name,
         "contact": student.contact,
         "is_active": student.user.is_active,
-        "photo_url": static_url(student.photo_path),
-        "resume_url": static_url(student.resume_path),
+        "photo_url": _static_url(student.photo_path),
+        "resume_url": _static_url(student.resume_path),
     }
 
 
 def _job_position_payload(job_position):
     return {
         "id": job_position.id,
-        "drive_name": job_position.drive_name,
         "title": job_position.title,
         "description": job_position.description,
         "company_name": job_position.company.company_name,
-        "company_logo_url": static_url(job_position.company.logo_path),
+        "company_logo_url": _static_url(job_position.company.logo_path),
         "location": job_position.location,
-        "eligibility_criteria": job_position.eligibility_criteria,
+        "eligible_branches": job_position.eligible_branches,
+        "min_cgpa": job_position.min_cgpa,
+        "eligible_graduation_year": job_position.eligible_graduation_year,
         "salary": job_position.salary,
         "skills_required": job_position.skills_required,
         "status": job_position.status,
@@ -58,8 +62,8 @@ def _application_payload(application):
     return {
         "id": application.id,
         "student_name": application.student.name,
-        "student_photo_url": static_url(application.student.photo_path),
-        "student_resume_url": static_url(application.student.resume_path),
+        "student_photo_url": _static_url(application.student.photo_path),
+        "student_resume_url": _static_url(application.student.resume_path),
         "job_title": application.job_position.title,
         "company_name": application.job_position.company.company_name,
         "status": application.status,

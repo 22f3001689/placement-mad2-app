@@ -1,6 +1,6 @@
 from functools import wraps
 
-from flask import abort, jsonify
+from flask import abort
 from flask_login import current_user, login_required
 
 
@@ -22,21 +22,3 @@ def role_required(*roles):
         return wrapped
 
     return decorator
-
-
-def company_approved_required(view):
-    """Require a logged-in Company whose approval_status is "approved".
-
-    401/403 the same way role_required("company") does, plus a distinguishing
-    403 if the Company is logged in but not yet approved (per Milestone 2's
-    auth contract).
-    """
-
-    @wraps(view)
-    @role_required("company")
-    def wrapped(*args, **kwargs):
-        if current_user.company_profile.approval_status != "approved":
-            return jsonify({"error": "Company is not yet approved"}), 403
-        return view(*args, **kwargs)
-
-    return wrapped
