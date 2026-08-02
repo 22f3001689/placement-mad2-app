@@ -104,8 +104,8 @@ onMounted(loadDrives)
         <tr v-for="(d, i) in upcomingDrives" :key="d.id">
           <td>{{ i + 1 }}</td>
           <td>{{ d.drive_name }}</td>
-          <td><button class="btn btn-sm btn-outline-primary" @click="openApplications(d)">view details</button></td>
-          <td><button class="btn btn-sm btn-outline-success" @click="completeDrive(d)">mark as complete</button></td>
+          <td><button class="btn btn-sm btn-outline-primary" @click="openApplications(d)">View Details</button></td>
+          <td><button class="btn btn-sm btn-outline-success" @click="completeDrive(d)">Mark as Complete</button></td>
         </tr>
       </tbody>
     </table>
@@ -123,7 +123,7 @@ onMounted(loadDrives)
         <tr v-for="(d, i) in closedDrives" :key="d.id">
           <td>{{ i + 1 }}</td>
           <td>{{ d.drive_name }}</td>
-          <td><button class="btn btn-sm btn-outline-primary" @click="openApplications(d)">update</button></td>
+          <td><button class="btn btn-sm btn-outline-primary" @click="openApplications(d)">Update</button></td>
         </tr>
       </tbody>
     </table>
@@ -150,7 +150,7 @@ onMounted(loadDrives)
           <label class="form-label">Application Deadline</label>
           <input v-model="newDrive.application_deadline" type="datetime-local" class="form-control" required />
         </div>
-        <button type="submit" class="btn btn-success">save</button>
+        <button type="submit" class="btn btn-success">Save</button>
       </form>
     </Modal>
 
@@ -162,7 +162,7 @@ onMounted(loadDrives)
       <template v-if="applicationsForDrive">
         <div v-for="a in applicationsForDrive" :key="a.id" class="d-flex justify-content-between align-items-center mb-2">
           <span>{{ a.student_name }}</span>
-          <button class="btn btn-sm btn-outline-primary" @click="reviewApplication(a)">review application</button>
+          <button class="btn btn-sm btn-outline-primary" @click="reviewApplication(a)">Review Application</button>
         </div>
       </template>
     </Modal>
@@ -186,7 +186,7 @@ onMounted(loadDrives)
           download
           class="btn btn-sm btn-outline-primary mb-2"
         >
-          view resume
+          View Resume
         </a>
         <div class="mb-2">
           <label class="form-label">Status</label>
@@ -211,7 +211,7 @@ onMounted(loadDrives)
             @change="setInterview($event.target.value)"
           />
         </div>
-        <button class="btn btn-sm btn-secondary" @click="backToApplications">back</button>
+        <button class="btn btn-sm btn-secondary" @click="backToApplications">Back</button>
       </template>
     </Modal>
   </div>
