@@ -57,11 +57,10 @@ def seed_database():
         print("Creating a sample job position and application...")
         job_position = JobPosition(
             company_id=company.id,
+            drive_name="Drive 1",
             title="Software Engineer",
             description="Entry-level backend role.",
-            eligible_branches="Computer Science",
-            min_cgpa=7.0,
-            eligible_graduation_year=2026,
+            eligibility_criteria="B.Tech Computer Science, CGPA >= 7.0, 2026 batch",
             salary=800000,
             skills_required="Python, SQL",
             location="Bangalore",
