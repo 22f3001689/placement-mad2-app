@@ -78,11 +78,10 @@ class JobPosition(db.Model):
     __tablename__ = "job_position"
     id = db.Column(db.Integer, primary_key=True)
     company_id = db.Column(db.Integer, db.ForeignKey("company.id"), nullable=False)
+    drive_name = db.Column(db.String(150), nullable=True)
     title = db.Column(db.String(150), nullable=False)
     description = db.Column(db.Text, nullable=True)
-    eligible_branches = db.Column(db.String(255), nullable=True)
-    min_cgpa = db.Column(db.Float, nullable=True)
-    eligible_graduation_year = db.Column(db.Integer, nullable=True)
+    eligibility_criteria = db.Column(db.Text, nullable=True)
     salary = db.Column(db.Integer, nullable=True)
     location = db.Column(db.String(150), nullable=True)
     skills_required = db.Column(db.Text, nullable=True)
@@ -110,6 +109,7 @@ class Application(db.Model):
     )
     application_date = db.Column(db.DateTime, default=datetime.utcnow)
     status = db.Column(db.String(20), nullable=False, default="applied")
+    interview_datetime = db.Column(db.DateTime, nullable=True)
 
     student = db.relationship(
         "Student",
