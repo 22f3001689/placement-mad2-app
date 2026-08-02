@@ -83,7 +83,7 @@ onMounted(loadDrives)
 <template>
   <div class="container" style="margin-top: 3rem">
     <div class="d-flex justify-content-between align-items-center mb-3">
-      <h1>Welcome {{ auth.user?.username }}</h1>
+      <h1>Welcome {{ auth.user?.company_name }}</h1>
       <div>
         <button class="btn btn-primary me-2" @click="showCreateDrive = true">Create Drive</button>
         <button class="btn btn-danger" @click="onLogout">Log out</button>
