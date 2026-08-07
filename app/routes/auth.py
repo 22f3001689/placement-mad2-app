@@ -11,6 +11,7 @@ def _user_payload(user):
     payload = {"username": user.username, "role": user.role}
     if user.role == "company":
         payload["approval_status"] = user.company_profile.approval_status
+        payload["company_name"] = user.company_profile.company_name
     return payload
 
 
