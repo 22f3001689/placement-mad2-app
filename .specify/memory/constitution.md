@@ -1,8 +1,14 @@
 <!--
 Sync Impact Report
-Version change: 1.0.0 → 1.1.0
+Version change: 1.1.0 → 1.2.0
 Modified principles: n/a
-Added sections: Core Principles VII (Simple, Human, Surgical Code)
+Modified sections: Data & Access Constraints — replaced the server-side eligibility-rejection
+  requirement with a statement that eligibility is freeform/self-attested, reflecting Milestone 4's
+  already-merged schema (structured branch/CGPA/year columns were dropped in favor of one freeform
+  eligibility_criteria field, matching the actual product wireframe). Rationale: the old constraint
+  was written before any real Create-Drive UI existed and is no longer satisfiable given the current
+  schema; discovered and resolved by explicit user decision during Milestone 5 planning.
+Added sections: none
 Removed sections: none
 Templates requiring review: .specify/templates/plan-template.md (✅ no conflicts),
   .specify/templates/spec-template.md (✅ compatible), .specify/templates/tasks-template.md (✅ compatible)
@@ -83,8 +89,10 @@ written by one focused person, not generated boilerplate. Concretely:
 - Caching MUST be applied to hot read endpoints (e.g. job/drive listings, company search, student
   search) via Redis, with explicit cache expiry/invalidation — stale reads after a write are a bug.
 - A Student MUST NOT be able to submit more than one Application to the same Job Position/Drive.
-- Applications MUST be rejected server-side if the Student fails the drive's eligibility criteria
-  (branch, CGPA, year, etc.) at submission time.
+- Eligibility criteria for a Drive are freeform text set by the Company (`eligibility_criteria`,
+  Milestone 4) shown to the Student before applying — self-attested, not mechanically checked.
+  There is no structured branch/CGPA/year data to validate against server-side; a Student may Apply
+  regardless of fit, same as the actual product wireframe shows.
 - Complete history MUST be retained and queryable: a Student's full Application and Placement
   history persists even after a drive closes or a job is filled.
 - Companies can create/manage Job Positions and view/act on Applications only while their company
@@ -113,4 +121,4 @@ removing/redefining a principle, MINOR for adding one, PATCH for wording/clarity
 Sync Impact Report at the top of this file. All specs and plans should be checked against this
 constitution before implementation begins.
 
-**Version**: 1.1.0 | **Ratified**: 2026-08-01 | **Last Amended**: 2026-08-01
+**Version**: 1.2.0 | **Ratified**: 2026-08-01 | **Last Amended**: 2026-08-02
