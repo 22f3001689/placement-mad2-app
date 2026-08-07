@@ -1,7 +1,35 @@
 from datetime import datetime, timedelta
 
 from app import create_app, db
-from app.models import Application, Company, JobPosition, Placement, Student, User
+from app.models import (
+    Application,
+    Branch,
+    Company,
+    JobPosition,
+    Placement,
+    Skill,
+    Student,
+    User,
+)
+
+BRANCHES = [
+    ("CSE", "Computer Science and Engineering", "Software, algorithms, and systems design."),
+    ("ME", "Mechanical Engineering", "Design, manufacturing, and mechanical systems."),
+    ("EE", "Electrical Engineering", "Power systems, circuits, and electrical machines."),
+    ("DS", "Data Science", "Statistics, machine learning, and data analytics."),
+    ("ECE", "Electronics and Communication Engineering", "Electronics, signals, and communication systems."),
+]
+
+SKILLS = [
+    "Python",
+    "Java",
+    "SQL",
+    "Flask",
+    "JavaScript",
+    "Machine Learning",
+    "Data Analysis",
+    "Communication",
+]
 
 
 def seed_database():
@@ -10,6 +38,22 @@ def seed_database():
         print("Clearing existing data...")
         db.drop_all()
         db.create_all()
+
+        print("Creating branches...")
+        branches = {}
+        for code, name, description in BRANCHES:
+            branch = Branch(code=code, name=name, description=description)
+            db.session.add(branch)
+            branches[code] = branch
+        db.session.commit()
+
+        print("Creating skills...")
+        skills = {}
+        for name in SKILLS:
+            skill = Skill(name=name)
+            db.session.add(skill)
+            skills[name] = skill
+        db.session.commit()
 
         print("Creating admin...")
         admin = User(username="admin", role="admin")
@@ -48,14 +92,14 @@ def seed_database():
         student = Student(
             user_id=student_user.id,
             name="John Doe",
-            branch="Computer Science",
+            branch_id=branches["CSE"].id,
             graduation_year=2026,
             cgpa=8.5,
-            skills="Python, Flask, SQL",
             resume_path="uploads/resumes/john_doe.pdf",
             photo_path="uploads/photos/john_doe.png",
             contact="john.doe@example.com",
         )
+        student.skills = [skills["Python"], skills["Flask"], skills["SQL"]]
         db.session.add(student)
         db.session.commit()
 

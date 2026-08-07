@@ -47,6 +47,37 @@ class Company(db.Model):
         return f"<Company {self.company_name}>"
 
 
+class Branch(db.Model):
+    """Master list of Student branches (e.g. CSE, ME) - fixed set, not self-service."""
+
+    __tablename__ = "branch"
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(10), unique=True, nullable=False)
+    name = db.Column(db.String(150), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+
+    def __repr__(self):
+        return f"<Branch {self.code}>"
+
+
+class Skill(db.Model):
+    """Master list of Skills a Student can pick from - fixed set, not self-service."""
+
+    __tablename__ = "skill"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+
+    def __repr__(self):
+        return f"<Skill {self.name}>"
+
+
+student_skill = db.Table(
+    "student_skill",
+    db.Column("student_id", db.Integer, db.ForeignKey("student.id"), primary_key=True),
+    db.Column("skill_id", db.Integer, db.ForeignKey("skill.id"), primary_key=True),
+)
+
+
 class Student(db.Model):
     __tablename__ = "student"
     id = db.Column(db.Integer, primary_key=True)
@@ -54,16 +85,17 @@ class Student(db.Model):
         db.Integer, db.ForeignKey("users.id"), unique=True, nullable=False
     )
     name = db.Column(db.String(100), nullable=False)
-    branch = db.Column(db.String(100), nullable=True)
+    branch_id = db.Column(db.Integer, db.ForeignKey("branch.id"), nullable=True)
     graduation_year = db.Column(db.Integer, nullable=True)
     cgpa = db.Column(db.Float, nullable=True)
-    skills = db.Column(db.Text, nullable=True)
     resume_path = db.Column(db.String(255), nullable=True)
     photo_path = db.Column(db.String(255), nullable=True)
     contact = db.Column(db.String(100), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     user = db.relationship("User", backref=db.backref("student_profile", uselist=False))
+    branch = db.relationship("Branch")
+    skills = db.relationship("Skill", secondary=student_skill, backref="students")
 
     def __repr__(self):
         return f"<Student {self.name}>"

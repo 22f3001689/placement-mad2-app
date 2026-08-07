@@ -59,7 +59,9 @@ def _application_detail_payload(application):
     return {
         "id": application.id,
         "student_name": student.name,
-        "student_branch": student.branch,
+        "student_branch": student.branch.name if student.branch else None,
+        "student_cgpa": student.cgpa,
+        "student_skills": [s.name for s in student.skills],
         "student_photo_url": static_url(student.photo_path),
         "student_resume_url": static_url(student.resume_path),
         "drive_name": drive.drive_name,

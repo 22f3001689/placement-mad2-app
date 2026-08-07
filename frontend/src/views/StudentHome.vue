@@ -15,6 +15,10 @@ const showEditProfile = ref(false)
 const profile = ref(null)
 const profilePhoto = ref(null)
 const profileResume = ref(null)
+const branches = ref([])
+const selectedBranchId = ref('')
+const skillOptions = ref([])
+const selectedSkillIds = ref([])
 
 const selectedOrganization = ref(null)
 const organizationDrives = ref([])
@@ -40,16 +44,20 @@ async function loadApplications() {
 
 async function openEditProfile() {
   profile.value = await get('/student/profile')
+  selectedBranchId.value = profile.value.branch?.id || ''
+  selectedSkillIds.value = profile.value.skills.map((s) => s.id)
+  if (!branches.value.length) branches.value = await get('/auth/branches')
+  if (!skillOptions.value.length) skillOptions.value = await get('/auth/skills')
   showEditProfile.value = true
 }
 
 async function saveProfile() {
   const formData = new FormData()
   formData.set('name', profile.value.name || '')
-  formData.set('branch', profile.value.branch || '')
+  if (selectedBranchId.value) formData.set('branch_id', selectedBranchId.value)
   formData.set('graduation_year', profile.value.graduation_year || '')
   formData.set('cgpa', profile.value.cgpa || '')
-  formData.set('skills', profile.value.skills || '')
+  selectedSkillIds.value.forEach((id) => formData.append('skill_ids', id))
   formData.set('contact', profile.value.contact || '')
   if (profilePhoto.value) formData.set('photo', profilePhoto.value)
   if (profileResume.value) formData.set('resume', profileResume.value)
@@ -161,7 +169,10 @@ onMounted(() => {
         </div>
         <div class="mb-2">
           <label class="form-label">Branch</label>
-          <input v-model="profile.branch" class="form-control" />
+          <select v-model="selectedBranchId" class="form-select">
+            <option value="">Select a branch</option>
+            <option v-for="b in branches" :key="b.id" :value="b.id">{{ b.code }} - {{ b.name }}</option>
+          </select>
         </div>
         <div class="mb-2">
           <label class="form-label">Graduation Year</label>
@@ -173,7 +184,9 @@ onMounted(() => {
         </div>
         <div class="mb-2">
           <label class="form-label">Skills</label>
-          <input v-model="profile.skills" class="form-control" />
+          <select v-model="selectedSkillIds" class="form-select" multiple>
+            <option v-for="s in skillOptions" :key="s.id" :value="s.id">{{ s.name }}</option>
+          </select>
         </div>
         <div class="mb-2">
           <label class="form-label">Contact</label>
@@ -248,7 +261,7 @@ onMounted(() => {
 
     <Modal :show="showHistory" title="Student Application History" @close="showHistory = false">
       <p><strong>Student Name:</strong> {{ profile?.name || auth.user?.username }}</p>
-      <p><strong>Department:</strong> {{ profile?.branch }}</p>
+      <p><strong>Department:</strong> {{ profile?.branch?.name }}</p>
       <table class="table">
         <thead>
           <tr>

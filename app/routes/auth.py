@@ -2,9 +2,25 @@ from flask import Blueprint, jsonify, request
 from flask_login import current_user, login_required, login_user, logout_user
 
 from app import db
-from app.models import Company, Student, User
+from app.models import Branch, Company, Skill, Student, User
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
+
+
+@auth_bp.route("/branches", methods=["GET"])
+def list_branches():
+    """Public - needed on the registration form, before any session exists."""
+    branches = Branch.query.all()
+    return jsonify(
+        [{"id": b.id, "code": b.code, "name": b.name, "description": b.description} for b in branches]
+    ), 200
+
+
+@auth_bp.route("/skills", methods=["GET"])
+def list_skills():
+    """Public - needed on the registration/profile form, before or regardless of session."""
+    skills = Skill.query.all()
+    return jsonify([{"id": s.id, "name": s.name} for s in skills]), 200
 
 
 def _user_payload(user):
@@ -21,6 +37,7 @@ def register_student():
     username = data.get("username")
     password = data.get("password")
     name = data.get("name")
+    branch_id = data.get("branch_id")
 
     if not all([username, password, name]):
         return jsonify({"error": "username, password and name are required"}), 400
@@ -28,13 +45,15 @@ def register_student():
         return jsonify({"error": "Password must be at least 6 characters long"}), 400
     if User.query.filter_by(username=username).first():
         return jsonify({"error": "Username already exists"}), 409
+    if branch_id is not None and Branch.query.get(branch_id) is None:
+        return jsonify({"error": "branch_id must be a valid Branch"}), 400
 
     user = User(username=username, role="student")
     user.set_password(password)
     db.session.add(user)
     db.session.flush()
 
-    student = Student(user_id=user.id, name=name)
+    student = Student(user_id=user.id, name=name, branch_id=branch_id)
     db.session.add(student)
     db.session.commit()
 
