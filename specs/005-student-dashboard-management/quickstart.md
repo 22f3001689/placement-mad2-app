@@ -45,7 +45,7 @@ curl -i -b /tmp/student_cookies.txt "http://localhost:5000/api/student/drives?co
 # expect 200, only that Company's ongoing Drives
 
 curl -i -b /tmp/student_cookies.txt http://localhost:5000/api/student/drives/1
-# expect 200, full detail including company_logo_url
+# expect 200, full detail including company_logo_url and eligibility_criteria
 ```
 
 ## US3 — Apply
@@ -80,6 +80,16 @@ curl -i -b /tmp/company_cookies.txt -X POST \
 # As the Student, confirm all of it shows up:
 curl -i -b /tmp/student_cookies.txt http://localhost:5000/api/student/applications
 # expect 200, status "selected", remark "Great fit.", mode "in_person"
+```
+
+## FR-011 — Company filters/sorts its Applicants list
+
+```bash
+curl -i -b /tmp/company_cookies.txt "http://localhost:5000/api/company/drives/1/applications?status=applied"
+# expect 200, only applications still in "applied" status
+
+curl -i -b /tmp/company_cookies.txt "http://localhost:5000/api/company/drives/1/applications?sort=status"
+# expect 200, every applicant, grouped by status
 ```
 
 ## US5 — Search

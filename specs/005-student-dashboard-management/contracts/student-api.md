@@ -89,6 +89,7 @@ No status restriction (research.md) — viewable whether `ongoing` or `completed
     "drive_name": "Drive 1",
     "title": "Senior Software Developer",
     "description": "an experienced developer who leads projects...",
+    "eligibility_criteria": "B.Tech CSE/IT, CGPA >= 7.0, 2026 batch",
     "salary": 600000,
     "location": "Chennai",
     "company_name": "Acme Corp",
@@ -98,6 +99,9 @@ No status restriction (research.md) — viewable whether `ongoing` or `completed
   }
   ```
   `already_applied` tells the frontend whether to show Apply or not, without a second request.
+  `eligibility_criteria` is shown to the Student before they apply, so self-attestation (research.md)
+  is an informed choice, not a blind one — not a substitute for server-side validation (out of scope
+  here, see spec.md's Assumptions and the constitution's v1.2.0 amendment).
 - `404` — no such Drive.
 
 ## POST /api/student/drives/`<id>`/apply
@@ -145,8 +149,22 @@ same data, the frontend decides how much of it to show where.
 
 ## Extended: Company API (Milestone 4)
 
-Two existing endpoints gain one optional field each. Everything else about them is unchanged from
+Three existing endpoints change. Everything else about them is unchanged from
 `specs/004-company-dashboard-management/contracts/company-api.md`.
+
+### GET /api/company/drives/`<id>`/applications
+
+**Query params** (new, both optional): `status` (filter to one of `applied`/`shortlisted`/
+`waiting`/`selected`/`rejected`), `sort` (`status` — groups same-status rows together; default is
+unsorted/insertion order, unchanged from Milestone 4).
+
+**Rationale**: with automatic eligibility rejection out of scope (constitution v1.2.0), this is the
+cheap alternative that actually helps Company shortlist faster — filter down to `applied` first, or
+sort by status, instead of scrolling every row in application order. No new endpoint, no schema
+change; a Drive's own `applications` relationship (Milestone 1) already has everything needed.
+
+**Responses**: unchanged shape (list of `{ id, student_name, status, application_date }`), just
+filtered/ordered differently depending on the query params.
 
 ### POST /api/company/applications/`<id>`/decision
 
