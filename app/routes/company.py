@@ -84,14 +84,20 @@ def create_drive():
     application_deadline = data.get("application_deadline")
 
     if not all([drive_name, title, application_deadline]):
-        return jsonify(
-            {"error": "drive_name, title and application_deadline are required"}
-        ), 400
+        return (
+            jsonify(
+                {"error": "drive_name, title and application_deadline are required"}
+            ),
+            400,
+        )
 
     try:
         deadline = datetime.fromisoformat(application_deadline)
     except ValueError:
-        return jsonify({"error": "application_deadline must be a valid ISO datetime"}), 400
+        return (
+            jsonify({"error": "application_deadline must be a valid ISO datetime"}),
+            400,
+        )
 
     drive = JobPosition(
         company_id=current_user.company_profile.id,
@@ -158,9 +164,14 @@ def decide_application(application_id):
     data = request.get_json(silent=True) or {}
     status = data.get("status")
     if status not in APPLICATION_DECISION_STATUSES:
-        return jsonify(
-            {"error": "status must be one of shortlisted, waiting, selected, rejected"}
-        ), 400
+        return (
+            jsonify(
+                {
+                    "error": "status must be one of shortlisted, waiting, selected, rejected"
+                }
+            ),
+            400,
+        )
 
     application = _own_application_or_404(application_id)
     application.status = status
@@ -186,7 +197,10 @@ def schedule_interview(application_id):
     try:
         parsed = datetime.fromisoformat(interview_datetime)
     except ValueError:
-        return jsonify({"error": "interview_datetime must be a valid ISO datetime"}), 400
+        return (
+            jsonify({"error": "interview_datetime must be a valid ISO datetime"}),
+            400,
+        )
 
     application = _own_application_or_404(application_id)
     application.interview_datetime = parsed

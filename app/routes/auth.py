@@ -49,7 +49,10 @@ def register_company():
     company_name = data.get("company_name")
 
     if not all([username, password, company_name]):
-        return jsonify({"error": "username, password and company_name are required"}), 400
+        return (
+            jsonify({"error": "username, password and company_name are required"}),
+            400,
+        )
     if len(password) < 6:
         return jsonify({"error": "Password must be at least 6 characters long"}), 400
     if User.query.filter_by(username=username).first():

@@ -174,9 +174,9 @@ def get_organization(company_id):
 @student_bp.route("/drives", methods=["GET"])
 @role_required("student")
 def list_drives():
-    query = JobPosition.query.join(Company, JobPosition.company_id == Company.id).filter(
-        JobPosition.status == "ongoing"
-    )
+    query = JobPosition.query.join(
+        Company, JobPosition.company_id == Company.id
+    ).filter(JobPosition.status == "ongoing")
 
     company_id = request.args.get("company_id")
     if company_id:
@@ -239,7 +239,9 @@ def list_applications():
 @student_bp.route("/placement/confirmation", methods=["GET"])
 @role_required("student")
 def placement_confirmation():
-    placement = Placement.query.filter_by(student_id=current_user.student_profile.id).first()
+    placement = Placement.query.filter_by(
+        student_id=current_user.student_profile.id
+    ).first()
     if placement is None:
         return jsonify({"error": "No placement on file"}), 404
 
@@ -254,5 +256,7 @@ def placement_confirmation():
     return Response(
         body,
         mimetype="text/plain",
-        headers={"Content-Disposition": "attachment; filename=placement_confirmation.txt"},
+        headers={
+            "Content-Disposition": "attachment; filename=placement_confirmation.txt"
+        },
     )

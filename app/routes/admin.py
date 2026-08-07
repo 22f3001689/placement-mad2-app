@@ -70,14 +70,19 @@ def _application_payload(application):
 @admin_bp.route("/dashboard", methods=["GET"])
 @role_required("admin")
 def dashboard():
-    return jsonify(
-        {
-            "students": Student.query.count(),
-            "companies": Company.query.filter_by(approval_status="approved").count(),
-            "job_positions": JobPosition.query.count(),
-            "applications": Application.query.count(),
-        }
-    ), 200
+    return (
+        jsonify(
+            {
+                "students": Student.query.count(),
+                "companies": Company.query.filter_by(
+                    approval_status="approved"
+                ).count(),
+                "job_positions": JobPosition.query.count(),
+                "applications": Application.query.count(),
+            }
+        ),
+        200,
+    )
 
 
 @admin_bp.route("/companies", methods=["GET"])
