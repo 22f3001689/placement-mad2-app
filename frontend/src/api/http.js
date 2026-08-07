@@ -20,3 +20,9 @@ export function get(path) {
 export function post(path, data) {
   return request(path, { method: 'POST', body: JSON.stringify(data) })
 }
+
+export function postForm(path, formData) {
+  // No Content-Type here - the browser sets multipart/form-data with the
+  // right boundary itself; overriding it (like request()'s default does) breaks the upload.
+  return request(path, { method: 'POST', body: formData, headers: {} })
+}

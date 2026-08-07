@@ -37,6 +37,7 @@ class Company(db.Model):
     hr_contact = db.Column(db.String(100), nullable=True)
     website = db.Column(db.String(255), nullable=True)
     logo_path = db.Column(db.String(255), nullable=True)
+    overview = db.Column(db.Text, nullable=True)
     approval_status = db.Column(db.String(20), nullable=False, default="pending")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -110,6 +111,8 @@ class Application(db.Model):
     application_date = db.Column(db.DateTime, default=datetime.utcnow)
     status = db.Column(db.String(20), nullable=False, default="applied")
     interview_datetime = db.Column(db.DateTime, nullable=True)
+    interview_mode = db.Column(db.String(20), nullable=True)
+    company_remark = db.Column(db.Text, nullable=True)
 
     student = db.relationship(
         "Student",
