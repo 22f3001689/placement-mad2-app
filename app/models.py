@@ -36,6 +36,7 @@ class Company(db.Model):
     location = db.Column(db.String(150), nullable=True)
     hr_contact = db.Column(db.String(100), nullable=True)
     website = db.Column(db.String(255), nullable=True)
+    logo_path = db.Column(db.String(255), nullable=True)
     approval_status = db.Column(db.String(20), nullable=False, default="pending")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -59,6 +60,7 @@ class Student(db.Model):
     cgpa = db.Column(db.Float, nullable=True)
     skills = db.Column(db.Text, nullable=True)
     resume_path = db.Column(db.String(255), nullable=True)
+    photo_path = db.Column(db.String(255), nullable=True)
     contact = db.Column(db.String(100), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -82,9 +84,10 @@ class JobPosition(db.Model):
     min_cgpa = db.Column(db.Float, nullable=True)
     eligible_graduation_year = db.Column(db.Integer, nullable=True)
     salary = db.Column(db.Integer, nullable=True)
+    location = db.Column(db.String(150), nullable=True)
     skills_required = db.Column(db.Text, nullable=True)
     application_deadline = db.Column(db.DateTime, nullable=False)
-    status = db.Column(db.String(20), nullable=False, default="pending")
+    status = db.Column(db.String(20), nullable=False, default="ongoing")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     company = db.relationship(
