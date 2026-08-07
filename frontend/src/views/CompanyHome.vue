@@ -178,6 +178,8 @@ onMounted(loadDrives)
         />
         <p><strong>Student Name:</strong> {{ selectedApplication.student_name }}</p>
         <p><strong>Department:</strong> {{ selectedApplication.student_branch }}</p>
+        <p><strong>CGPA:</strong> {{ selectedApplication.student_cgpa }}</p>
+        <p><strong>Skills:</strong> {{ selectedApplication.student_skills?.join(', ') }}</p>
         <p><strong>Drive:</strong> {{ selectedApplication.drive_name }}</p>
         <p><strong>Job Title:</strong> {{ selectedApplication.job_title }}</p>
         <a

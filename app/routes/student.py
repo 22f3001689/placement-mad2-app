@@ -7,7 +7,7 @@ from werkzeug.utils import secure_filename
 
 from app import db
 from app.decorators import role_required
-from app.models import Application, Company, JobPosition, Placement
+from app.models import Application, Branch, Company, JobPosition, Placement, Skill
 from app.utils import static_url
 
 student_bp = Blueprint("student", __name__, url_prefix="/api/student")
@@ -23,13 +23,22 @@ def _save_upload(file, subdir):
     return relative_path
 
 
+def _branch_payload(branch):
+    return {
+        "id": branch.id,
+        "code": branch.code,
+        "name": branch.name,
+        "description": branch.description,
+    }
+
+
 def _profile_payload(student):
     return {
         "name": student.name,
-        "branch": student.branch,
+        "branch": _branch_payload(student.branch) if student.branch else None,
         "graduation_year": student.graduation_year,
         "cgpa": student.cgpa,
-        "skills": student.skills,
+        "skills": [{"id": s.id, "name": s.name} for s in student.skills],
         "contact": student.contact,
         "photo_url": static_url(student.photo_path),
         "resume_url": static_url(student.resume_path),
@@ -120,8 +129,11 @@ def update_profile():
 
     if "name" in form:
         student.name = form["name"]
-    if "branch" in form:
-        student.branch = form["branch"]
+    if "branch_id" in form:
+        branch = Branch.query.get(form["branch_id"])
+        if branch is None:
+            return jsonify({"error": "branch_id must be a valid Branch"}), 400
+        student.branch_id = branch.id
     if "graduation_year" in form:
         try:
             student.graduation_year = int(form["graduation_year"])
@@ -132,8 +144,12 @@ def update_profile():
             student.cgpa = float(form["cgpa"])
         except ValueError:
             return jsonify({"error": "cgpa must be a number"}), 400
-    if "skills" in form:
-        student.skills = form["skills"]
+    if "skill_ids" in form:
+        skill_ids = form.getlist("skill_ids")
+        skills = Skill.query.filter(Skill.id.in_(skill_ids)).all()
+        if len(skills) != len(set(skill_ids)):
+            return jsonify({"error": "skill_ids must all be valid Skills"}), 400
+        student.skills = skills
     if "contact" in form:
         student.contact = form["contact"]
 
