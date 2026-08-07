@@ -30,6 +30,11 @@ def seed_database():
             hr_contact="hr@acme.example",
             website="https://acme.example",
             logo_path="uploads/logos/acme_corp.png",
+            overview=(
+                "Through the application of innovation and our contextual knowledge, we give "
+                "associates the opportunity to deliver transformative outcomes that benefit "
+                "society at large and prove that anything is possible."
+            ),
             approval_status="approved",
         )
         db.session.add(company)

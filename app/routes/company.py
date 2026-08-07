@@ -70,6 +70,8 @@ def _application_detail_payload(application):
             if application.interview_datetime
             else None
         ),
+        "interview_mode": application.interview_mode,
+        "company_remark": application.company_remark,
     }
 
 
@@ -131,7 +133,16 @@ def complete_drive(drive_id):
 @company_approved_required
 def list_drive_applications(drive_id):
     drive = _own_drive_or_404(drive_id)
-    return jsonify([_application_summary_payload(a) for a in drive.applications]), 200
+    applications = drive.applications
+
+    status = request.args.get("status")
+    if status:
+        applications = [a for a in applications if a.status == status]
+
+    if request.args.get("sort") == "status":
+        applications = sorted(applications, key=lambda a: a.status)
+
+    return jsonify([_application_summary_payload(a) for a in applications]), 200
 
 
 @company_bp.route("/applications/<int:application_id>", methods=["GET"])
@@ -153,8 +164,15 @@ def decide_application(application_id):
 
     application = _own_application_or_404(application_id)
     application.status = status
+    remark = data.get("remark")
+    if remark is not None:
+        application.company_remark = remark
     db.session.commit()
-    return jsonify({"id": application.id, "status": application.status}), 200
+
+    payload = {"id": application.id, "status": application.status}
+    if remark is not None:
+        payload["remark"] = application.company_remark
+    return jsonify(payload), 200
 
 
 @company_bp.route("/applications/<int:application_id>/interview", methods=["POST"])
@@ -172,7 +190,15 @@ def schedule_interview(application_id):
 
     application = _own_application_or_404(application_id)
     application.interview_datetime = parsed
+    mode = data.get("mode")
+    if mode is not None:
+        application.interview_mode = mode
     db.session.commit()
-    return jsonify(
-        {"id": application.id, "interview_datetime": application.interview_datetime.isoformat()}
-    ), 200
+
+    payload = {
+        "id": application.id,
+        "interview_datetime": application.interview_datetime.isoformat(),
+    }
+    if mode is not None:
+        payload["mode"] = application.interview_mode
+    return jsonify(payload), 200

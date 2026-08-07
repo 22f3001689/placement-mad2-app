@@ -1,12 +1,258 @@
-from flask import Blueprint, jsonify
-from flask_login import current_user
+import os
 
+from flask import Blueprint, Response, current_app, jsonify, request
+from flask_login import current_user
+from sqlalchemy import or_
+from werkzeug.utils import secure_filename
+
+from app import db
 from app.decorators import role_required
+from app.models import Application, Company, JobPosition, Placement
+from app.utils import static_url
 
 student_bp = Blueprint("student", __name__, url_prefix="/api/student")
 
+PHOTOS_DIR = "uploads/photos"
+RESUMES_DIR = "uploads/resumes"
 
-@student_bp.route("/ping", methods=["GET"])
+
+def _save_upload(file, subdir):
+    filename = f"{current_user.id}_{secure_filename(file.filename)}"
+    relative_path = f"{subdir}/{filename}"
+    file.save(os.path.join(current_app.static_folder, relative_path))
+    return relative_path
+
+
+def _profile_payload(student):
+    return {
+        "name": student.name,
+        "branch": student.branch,
+        "graduation_year": student.graduation_year,
+        "cgpa": student.cgpa,
+        "skills": student.skills,
+        "contact": student.contact,
+        "photo_url": static_url(student.photo_path),
+        "resume_url": static_url(student.resume_path),
+    }
+
+
+def _organization_payload(company):
+    return {
+        "id": company.id,
+        "company_name": company.company_name,
+        "industry": company.industry,
+        "logo_url": static_url(company.logo_path),
+    }
+
+
+def _organization_detail_payload(company):
+    return {
+        "id": company.id,
+        "company_name": company.company_name,
+        "overview": company.overview,
+        "logo_url": static_url(company.logo_path),
+        "industry": company.industry,
+        "location": company.location,
+    }
+
+
+def _drive_summary_payload(drive):
+    return {
+        "id": drive.id,
+        "drive_name": drive.drive_name,
+        "title": drive.title,
+        "company_name": drive.company.company_name,
+    }
+
+
+def _drive_detail_payload(drive):
+    already_applied = (
+        Application.query.filter_by(
+            student_id=current_user.student_profile.id, job_position_id=drive.id
+        ).first()
+        is not None
+    )
+    return {
+        "id": drive.id,
+        "drive_name": drive.drive_name,
+        "title": drive.title,
+        "description": drive.description,
+        "eligibility_criteria": drive.eligibility_criteria,
+        "salary": drive.salary,
+        "location": drive.location,
+        "company_name": drive.company.company_name,
+        "company_logo_url": static_url(drive.company.logo_path),
+        "status": drive.status,
+        "already_applied": already_applied,
+    }
+
+
+def _application_payload(application):
+    return {
+        "id": application.id,
+        "job_position_id": application.job_position_id,
+        "drive_name": application.job_position.drive_name,
+        "job_title": application.job_position.title,
+        "company_name": application.job_position.company.company_name,
+        "status": application.status,
+        "interview_datetime": (
+            application.interview_datetime.isoformat()
+            if application.interview_datetime
+            else None
+        ),
+        "interview_mode": application.interview_mode,
+        "company_remark": application.company_remark,
+        "application_date": application.application_date.isoformat(),
+    }
+
+
+@student_bp.route("/profile", methods=["GET"])
 @role_required("student")
-def ping():
-    return jsonify({"message": f"Hello, {current_user.username} (student)"}), 200
+def get_profile():
+    return jsonify(_profile_payload(current_user.student_profile)), 200
+
+
+@student_bp.route("/profile", methods=["POST"])
+@role_required("student")
+def update_profile():
+    student = current_user.student_profile
+    form = request.form
+
+    if "name" in form:
+        student.name = form["name"]
+    if "branch" in form:
+        student.branch = form["branch"]
+    if "graduation_year" in form:
+        try:
+            student.graduation_year = int(form["graduation_year"])
+        except ValueError:
+            return jsonify({"error": "graduation_year must be a whole number"}), 400
+    if "cgpa" in form:
+        try:
+            student.cgpa = float(form["cgpa"])
+        except ValueError:
+            return jsonify({"error": "cgpa must be a number"}), 400
+    if "skills" in form:
+        student.skills = form["skills"]
+    if "contact" in form:
+        student.contact = form["contact"]
+
+    photo = request.files.get("photo")
+    if photo and photo.filename:
+        student.photo_path = _save_upload(photo, PHOTOS_DIR)
+
+    resume = request.files.get("resume")
+    if resume and resume.filename:
+        student.resume_path = _save_upload(resume, RESUMES_DIR)
+
+    db.session.commit()
+    return jsonify(_profile_payload(student)), 200
+
+
+@student_bp.route("/organizations", methods=["GET"])
+@role_required("student")
+def list_organizations():
+    query = Company.query.filter_by(approval_status="approved")
+
+    q = request.args.get("q")
+    if q:
+        query = query.filter(Company.company_name.ilike(f"%{q}%"))
+
+    return jsonify([_organization_payload(c) for c in query.all()]), 200
+
+
+@student_bp.route("/organizations/<int:company_id>", methods=["GET"])
+@role_required("student")
+def get_organization(company_id):
+    company = Company.query.filter_by(id=company_id, approval_status="approved").first()
+    if company is None:
+        return jsonify({"error": "Company not found"}), 404
+
+    return jsonify(_organization_detail_payload(company)), 200
+
+
+@student_bp.route("/drives", methods=["GET"])
+@role_required("student")
+def list_drives():
+    query = JobPosition.query.join(Company, JobPosition.company_id == Company.id).filter(
+        JobPosition.status == "ongoing"
+    )
+
+    company_id = request.args.get("company_id")
+    if company_id:
+        query = query.filter(JobPosition.company_id == company_id)
+
+    q = request.args.get("q")
+    if q:
+        query = query.filter(
+            or_(
+                Company.company_name.ilike(f"%{q}%"),
+                JobPosition.title.ilike(f"%{q}%"),
+                JobPosition.drive_name.ilike(f"%{q}%"),
+                JobPosition.skills_required.ilike(f"%{q}%"),
+            )
+        )
+
+    return jsonify([_drive_summary_payload(d) for d in query.all()]), 200
+
+
+@student_bp.route("/drives/<int:drive_id>", methods=["GET"])
+@role_required("student")
+def get_drive(drive_id):
+    drive = JobPosition.query.get(drive_id)
+    if drive is None:
+        return jsonify({"error": "Drive not found"}), 404
+
+    return jsonify(_drive_detail_payload(drive)), 200
+
+
+@student_bp.route("/drives/<int:drive_id>/apply", methods=["POST"])
+@role_required("student")
+def apply_to_drive(drive_id):
+    drive = JobPosition.query.get(drive_id)
+    if drive is None:
+        return jsonify({"error": "Drive not found"}), 404
+
+    if drive.status == "completed":
+        return jsonify({"error": "This Drive is no longer accepting applications"}), 409
+
+    student_id = current_user.student_profile.id
+    existing = Application.query.filter_by(
+        student_id=student_id, job_position_id=drive_id
+    ).first()
+    if existing is not None:
+        return jsonify({"error": "You have already applied to this Drive"}), 409
+
+    application = Application(student_id=student_id, job_position_id=drive_id)
+    db.session.add(application)
+    db.session.commit()
+    return jsonify({"id": application.id, "status": application.status}), 201
+
+
+@student_bp.route("/applications", methods=["GET"])
+@role_required("student")
+def list_applications():
+    applications = current_user.student_profile.applications
+    return jsonify([_application_payload(a) for a in applications]), 200
+
+
+@student_bp.route("/placement/confirmation", methods=["GET"])
+@role_required("student")
+def placement_confirmation():
+    placement = Placement.query.filter_by(student_id=current_user.student_profile.id).first()
+    if placement is None:
+        return jsonify({"error": "No placement on file"}), 404
+
+    body = (
+        "Placement Confirmation\n"
+        "=======================\n\n"
+        f"Student: {current_user.student_profile.name}\n"
+        f"Position: {placement.position_title}\n"
+        f"Salary: {placement.salary}\n"
+        f"Joining Date: {placement.joining_date}\n"
+    )
+    return Response(
+        body,
+        mimetype="text/plain",
+        headers={"Content-Disposition": "attachment; filename=placement_confirmation.txt"},
+    )
