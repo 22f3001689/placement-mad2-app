@@ -41,9 +41,7 @@ class Company(db.Model):
     approval_status = db.Column(db.String(20), nullable=False, default="pending")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    user = db.relationship(
-        "User", backref=db.backref("company_profile", uselist=False)
-    )
+    user = db.relationship("User", backref=db.backref("company_profile", uselist=False))
 
     def __repr__(self):
         return f"<Company {self.company_name}>"
@@ -65,9 +63,7 @@ class Student(db.Model):
     contact = db.Column(db.String(100), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    user = db.relationship(
-        "User", backref=db.backref("student_profile", uselist=False)
-    )
+    user = db.relationship("User", backref=db.backref("student_profile", uselist=False))
 
     def __repr__(self):
         return f"<Student {self.name}>"
