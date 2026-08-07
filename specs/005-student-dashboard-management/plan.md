@@ -8,10 +8,12 @@
 
 Add a JSON API under `/api/student` (profile update with real file upload, browse
 Organizations/Drives, search, apply, own Application history, placement confirmation download),
-gated by the existing `role_required("student")`. Extend two of Milestone 4's existing
-`/api/company` endpoints with two small new fields (`remark`, `interview_mode`) so Company can set
-what this milestone's Student view reads. This is the first milestone with a real file-upload
-endpoint — every `photo_path`/`resume_path` before now was seed-only.
+gated by the existing `role_required("student")`. Extend three of Milestone 4's existing
+`/api/company` endpoints: two small new fields (`remark`, `interview_mode`) so Company can set what
+this milestone's Student view reads, plus status filter/sort on the Applicants list as the cheap
+alternative to automatic eligibility rejection (see the constitution's v1.2.0 amendment and
+research.md). This is the first milestone with a real file-upload endpoint — every
+`photo_path`/`resume_path` before now was seed-only.
 
 ## Technical Context
 
@@ -41,10 +43,11 @@ Optimization and Caching") by the Milestones doc's own slicing — not added her
 Eligibility is self-attested freeform text, not server-checked (constitution amended to v1.2.0
 during this milestone's planning — see `.specify/memory/constitution.md`'s Sync Impact Report).
 
-**Scale/Scope**: 9 new endpoints under `/api/student`, 2 endpoints under `/api/company` gaining an
-optional field each, 1 new decorator-free file-upload code path, 1 single-page Vue view (`StudentHome.vue`)
-replacing the Milestone 2 ping placeholder, reusing `Modal.vue` for Organization/Drive/History
-detail popups.
+**Scale/Scope**: 9 new endpoints under `/api/student`, 3 endpoints under `/api/company` gaining a
+field/query-param each (`remark`, `interview_mode`, and status filter/sort on the Applicants list —
+the last one is the cheap alternative to automatic eligibility rejection, see research.md), 1 new
+decorator-free file-upload code path, 1 single-page Vue view (`StudentHome.vue`) replacing the
+Milestone 2 ping placeholder, reusing `Modal.vue` for Organization/Drive/History detail popups.
 
 ## Constitution Check
 

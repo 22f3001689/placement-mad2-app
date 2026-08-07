@@ -68,3 +68,18 @@ technical unknown the Technical Context flagged.
   just be unused surface area.
 - **Alternatives considered**: Mirroring Admin/Company's optional `status` param for consistency —
   rejected; consistency isn't a goal in itself, and this endpoint's one real use never needs it.
+
+## Decision: Filter/sort on the Applicants list instead of automatic eligibility rejection
+
+- **Decision**: `GET /api/company/drives/<id>/applications` (Milestone 4) gains optional `status`
+  (filter) and `sort=status` (group) query params. `GET /api/student/drives/<id>` gains
+  `eligibility_criteria` in its response.
+- **Rationale**: A direct follow-up to the constitution v1.2.0 amendment — dropping automatic
+  rejection doesn't mean doing nothing about it. These two changes are what actually address "make
+  shortlisting easier" without the fragility of parsing freeform eligibility text: the Student reads
+  the criteria and self-selects before applying, and the Company can filter straight to `applied`
+  (skip ones already decided) or group by status, both server-side query changes on data that
+  already exists — no new table, no new endpoint.
+- **Alternatives considered**: Building real eligibility parsing/matching against the freeform text
+  — explicitly deferred, not rejected outright; revisit if a concrete need shows up (per spec.md's
+  Assumptions, "a reasonable candidate once there's a concrete need for it").

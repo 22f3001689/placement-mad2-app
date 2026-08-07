@@ -174,8 +174,9 @@ confirm it contains that Placement's position title, salary, and joining date.
   skills, contact, resume, and photo.
 - **FR-002**: System MUST let a Student list Organizations (approved Companies only) and view one
   Company's overview and its `ongoing` Drives.
-- **FR-003**: System MUST let a Student view one Drive's full detail — Job Title, Description, Salary,
-  Location, and owning Company's logo/name.
+- **FR-003**: System MUST let a Student view one Drive's full detail — Job Title, Description,
+  Eligibility Criteria, Salary, Location, and owning Company's logo/name — so applying is an informed
+  choice, given eligibility is self-attested (see Assumptions).
 - **FR-004**: System MUST let a Student apply to an `ongoing` Drive they haven't already applied to,
   creating an Application with `status="applied"`.
 - **FR-005**: System MUST refuse a second Application by the same Student to the same Drive.
@@ -189,6 +190,9 @@ confirm it contains that Placement's position title, salary, and joining date.
   exists for them, containing its position, company, salary, and joining date.
 - **FR-010**: System MUST refuse every capability in this milestone to any caller that isn't logged in
   as the owning Student, per the role check already established in Milestone 2.
+- **FR-011**: System MUST let a Company filter its Drive's Applicants list by status and sort it by
+  status (extending Milestone 4's existing Applicants-list endpoint) — the cheap alternative to
+  automatic eligibility rejection (see Assumptions) for making shortlisting faster.
 
 ### Key Entities
 
@@ -246,3 +250,9 @@ confirm it contains that Placement's position title, salary, and joining date.
 - "View and search job postings by company, position, or required skills" (Milestones doc wording) is
   read as searching only `ongoing` Drives — a Student has no reason to search `completed` ones, since
   they can't apply to them anyway.
+- Eligibility stays self-attested — no server-side rejection at Apply time (constitution v1.2.0). Two
+  cheaper alternatives are in scope instead of automatic validation: showing `eligibility_criteria` on
+  the Drive detail so a Student applies with informed judgment (FR-003), and letting Company filter/
+  sort its Applicants list by status (FR-011) so shortlisting is faster without needing the system to
+  guess who's eligible from freeform text. Real validation (e.g. parsing/matching structured criteria)
+  is deferred, not ruled out — a reasonable candidate once there's a concrete need for it.
