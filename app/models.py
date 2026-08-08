@@ -110,6 +110,15 @@ class Student(db.Model):
         return f"<Student {self.name}>"
 
 
+job_position_skill = db.Table(
+    "job_position_skill",
+    db.Column(
+        "job_position_id", db.Integer, db.ForeignKey("job_position.id"), primary_key=True
+    ),
+    db.Column("skill_id", db.Integer, db.ForeignKey("skill.id"), primary_key=True),
+)
+
+
 class JobPosition(db.Model):
     """A recruitment opening posted by a Company. Also referred to as a Placement Drive."""
 
@@ -122,7 +131,6 @@ class JobPosition(db.Model):
     eligibility_criteria = db.Column(db.Text, nullable=True)
     salary = db.Column(db.Integer, nullable=True)
     location = db.Column(db.String(150), nullable=True)
-    skills_required = db.Column(db.Text, nullable=True)
     application_deadline = db.Column(db.DateTime, nullable=False)
     status = db.Column(
         db.String(20), nullable=False, default=JOB_POSITION_STATUS_ONGOING
@@ -133,6 +141,7 @@ class JobPosition(db.Model):
         "Company",
         backref=db.backref("job_positions", cascade="all, delete-orphan"),
     )
+    skills = db.relationship("Skill", secondary=job_position_skill, backref="job_positions")
 
     def __repr__(self):
         return f"<JobPosition {self.title}>"

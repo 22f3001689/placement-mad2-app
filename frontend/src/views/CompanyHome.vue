@@ -38,6 +38,12 @@ function emptyDrive() {
 }
 
 const newDrive = ref(emptyDrive())
+const skillOptions = ref([])
+const selectedSkillIds = ref([])
+
+async function loadSkillOptions() {
+  if (!skillOptions.value.length) skillOptions.value = await get('/auth/skills')
+}
 
 function editDrive(drive) {
   editingDriveId.value = drive.id
@@ -50,6 +56,8 @@ function editDrive(drive) {
     salary: drive.salary || '',
     application_deadline: drive.application_deadline?.slice(0, 16) || '',
   }
+  selectedSkillIds.value = drive.skills.map((s) => s.id)
+  loadSkillOptions()
   showCreateDrive.value = true
 }
 
@@ -82,14 +90,16 @@ async function loadDrives() {
 }
 
 async function saveDrive() {
+  const payload = { ...newDrive.value, skill_ids: selectedSkillIds.value }
   if (editingDriveId.value) {
-    await put(`/company/drives/${editingDriveId.value}`, newDrive.value)
+    await put(`/company/drives/${editingDriveId.value}`, payload)
   } else {
-    await post('/company/drives', newDrive.value)
+    await post('/company/drives', payload)
   }
   showCreateDrive.value = false
   editingDriveId.value = null
   newDrive.value = emptyDrive()
+  selectedSkillIds.value = []
   await loadDrives()
   flashSaveMessage()
 }
@@ -190,7 +200,12 @@ onMounted(loadDrives)
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h1>Welcome {{ auth.user?.company_name }}</h1>
       <div>
-        <button class="btn btn-primary me-2" @click="showCreateDrive = true">Create Drive</button>
+        <button
+          class="btn btn-primary me-2"
+          @click="selectedSkillIds = []; loadSkillOptions(); showCreateDrive = true"
+        >
+          Create Drive
+        </button>
         <button class="btn btn-outline-secondary me-2" @click="openExports">
           Export Applications
         </button>
@@ -249,7 +264,7 @@ onMounted(loadDrives)
     <Modal
       :show="showCreateDrive"
       :title="editingDriveId ? 'Edit Drive' : 'Create a Drive'"
-      @close="showCreateDrive = false; editingDriveId = null; newDrive = emptyDrive()"
+      @close="showCreateDrive = false; editingDriveId = null; newDrive = emptyDrive(); selectedSkillIds = []"
     >
       <form @submit.prevent="saveDrive">
         <div class="mb-2">
@@ -275,6 +290,12 @@ onMounted(loadDrives)
         <div class="mb-2">
           <label class="form-label">Salary</label>
           <input v-model="newDrive.salary" type="number" class="form-control" required />
+        </div>
+        <div class="mb-2">
+          <label class="form-label">Skills Required</label>
+          <select v-model="selectedSkillIds" class="form-select" multiple>
+            <option v-for="s in skillOptions" :key="s.id" :value="s.id">{{ s.name }}</option>
+          </select>
         </div>
         <div class="mb-2">
           <label class="form-label">Application Deadline</label>

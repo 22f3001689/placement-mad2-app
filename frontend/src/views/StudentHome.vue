@@ -139,7 +139,7 @@ onMounted(() => {
     </div>
 
     <form class="d-flex mb-4" @submit.prevent="loadOrganizations">
-      <input v-model="q" class="form-control me-2" placeholder="Search Companies, Job Titles or Skills" />
+      <input v-model="q" class="form-control me-2" placeholder="Search companies / skills" />
       <button class="btn btn-outline-secondary" type="submit">Search</button>
     </form>
 
@@ -259,6 +259,7 @@ onMounted(() => {
             <p><strong>Eligibility Criteria:</strong> {{ selectedDrive.eligibility_criteria }}</p>
             <p><strong>Location:</strong> {{ selectedDrive.location }}</p>
             <p><strong>Salary:</strong> {{ selectedDrive.salary }}</p>
+            <p><strong>Skills Required:</strong> {{ selectedDrive.skills?.map((s) => s.name).join(', ') }}</p>
           </div>
           <div class="col-4 text-center">
             <img

@@ -264,6 +264,7 @@ onMounted(() => {
             <p><strong>Job Description:</strong> {{ selectedDrive.description }}</p>
             <p><strong>Location:</strong> {{ selectedDrive.location }}</p>
             <p><strong>Salary:</strong> {{ selectedDrive.salary }}</p>
+            <p><strong>Skills Required:</strong> {{ selectedDrive.skills?.map((s) => s.name).join(', ') }}</p>
           </div>
           <div class="col-4 text-center">
             <img

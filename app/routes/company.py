@@ -15,7 +15,7 @@ from app.constants import (
     TERMINAL_APPLICATION_STATUSES,
 )
 from app.decorators import company_approved_required
-from app.models import Application, ExportJob, JobPosition, Placement
+from app.models import Application, ExportJob, JobPosition, Placement, Skill
 from app.utils import export_job_payload, get_logger, iso_or_none, static_url
 
 company_bp = Blueprint("company", __name__, url_prefix="/api/company")
@@ -28,6 +28,10 @@ def _own_drive_or_404(drive_id):
     if drive is None or drive.company_id != current_user.company_profile.id:
         abort(404)
     return drive
+
+
+def _skills_from_ids(skill_ids):
+    return Skill.query.filter(Skill.id.in_(skill_ids or [])).all()
 
 
 def _own_application_or_404(application_id):
@@ -49,6 +53,7 @@ def _drive_payload(drive):
         "eligibility_criteria": drive.eligibility_criteria,
         "salary": drive.salary,
         "location": drive.location,
+        "skills": [{"id": s.id, "name": s.name} for s in drive.skills],
         "status": drive.status,
         "application_deadline": drive.application_deadline.isoformat(),
     }
@@ -121,6 +126,7 @@ def create_drive():
         eligibility_criteria=data.get("eligibility_criteria"),
         salary=data.get("salary"),
         location=data.get("location"),
+        skills=_skills_from_ids(data.get("skill_ids")),
         application_deadline=deadline,
     )
     db.session.add(drive)
@@ -170,6 +176,7 @@ def update_drive(drive_id):
     drive.eligibility_criteria = data.get("eligibility_criteria")
     drive.salary = salary
     drive.location = location
+    drive.skills = _skills_from_ids(data.get("skill_ids"))
     drive.application_deadline = deadline
     db.session.commit()
     invalidate("drives")

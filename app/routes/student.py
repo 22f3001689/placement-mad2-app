@@ -114,6 +114,7 @@ def _drive_detail_payload(drive):
         "eligibility_criteria": drive.eligibility_criteria,
         "salary": drive.salary,
         "location": drive.location,
+        "skills": [{"id": s.id, "name": s.name} for s in drive.skills],
         "company_name": drive.company.company_name,
         "company_logo_url": static_url(drive.company.logo_path),
         "status": drive.status,
@@ -205,7 +206,19 @@ def list_organizations():
 
     q = request.args.get("q")
     if q:
-        query = query.filter(Company.company_name.ilike(f"%{q}%"))
+        # "Search Companies, Job Titles or Skills" - a company also matches if one of
+        # its own Drives' title/skills matches, not just its own name.
+        query = query.filter(
+            or_(
+                Company.company_name.ilike(f"%{q}%"),
+                Company.job_positions.any(
+                    or_(
+                        JobPosition.title.ilike(f"%{q}%"),
+                        JobPosition.skills.any(Skill.name.ilike(f"%{q}%")),
+                    )
+                ),
+            )
+        )
 
     return jsonify([_organization_payload(c) for c in query.all()]), 200
 
@@ -243,7 +256,7 @@ def list_drives():
                 Company.company_name.ilike(f"%{q}%"),
                 JobPosition.title.ilike(f"%{q}%"),
                 JobPosition.drive_name.ilike(f"%{q}%"),
-                JobPosition.skills_required.ilike(f"%{q}%"),
+                JobPosition.skills.any(Skill.name.ilike(f"%{q}%")),
             )
         )
 

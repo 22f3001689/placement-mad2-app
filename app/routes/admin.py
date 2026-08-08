@@ -62,7 +62,7 @@ def _job_position_payload(job_position):
         "location": job_position.location,
         "eligibility_criteria": job_position.eligibility_criteria,
         "salary": job_position.salary,
-        "skills_required": job_position.skills_required,
+        "skills": [{"id": s.id, "name": s.name} for s in job_position.skills],
         "status": job_position.status,
         "application_deadline": job_position.application_deadline.isoformat(),
     }

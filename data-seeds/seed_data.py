@@ -343,7 +343,7 @@ def seed_database():
             eligibility,
             salary,
             location,
-            skills_required,
+            skill_names,
             days_offset,
             status,
         ):
@@ -356,7 +356,7 @@ def seed_database():
                 eligibility_criteria=eligibility,
                 salary=salary,
                 location=location,
-                skills_required=skills_required,
+                skills=[skills[name] for name in skill_names],
                 application_deadline=deadline,
                 status=status,
             )
@@ -372,7 +372,7 @@ def seed_database():
             "B.Tech CSE/IT, CGPA >= 7.0",
             900000,
             "Bangalore",
-            "Python, SQL, Flask",
+            ["Python", "SQL", "Flask"],
             -50,
             "completed",
         )
@@ -384,7 +384,7 @@ def seed_database():
             "B.Tech CSE/ECE, CGPA >= 7.0",
             1100000,
             "Hyderabad",
-            "Python, Communication",
+            ["Python", "Communication"],
             -40,
             "completed",
         )
@@ -396,7 +396,7 @@ def seed_database():
             "B.Tech ME/EE, CGPA >= 6.5",
             600000,
             "Pune",
-            "Communication",
+            ["Communication"],
             -35,
             "completed",
         )
@@ -408,7 +408,7 @@ def seed_database():
             "B.Tech/B.Sc any branch, CGPA >= 7.0",
             750000,
             "Chennai",
-            "SQL, Data Analysis",
+            ["SQL", "Data Analysis"],
             -20,
             "completed",
         )
@@ -421,7 +421,7 @@ def seed_database():
             "B.Tech CSE/IT, 2026/2027 batch",
             400000,
             "Bangalore",
-            "Python, JavaScript",
+            ["Python", "JavaScript"],
             20,
             "ongoing",
         )
@@ -433,7 +433,7 @@ def seed_database():
             "B.Tech CSE/ECE, CGPA >= 6.5",
             950000,
             "Hyderabad",
-            "Python, Communication",
+            ["Python", "Communication"],
             15,
             "ongoing",
         )
@@ -445,7 +445,7 @@ def seed_database():
             "B.Tech ME, CGPA >= 7.0",
             850000,
             "Pune",
-            "Communication",
+            ["Communication"],
             25,
             "ongoing",
         )
@@ -457,7 +457,7 @@ def seed_database():
             "B.Tech CSE/DS, CGPA >= 7.5",
             1300000,
             "Chennai",
-            "Python, Machine Learning",
+            ["Python", "Machine Learning"],
             30,
             "ongoing",
         )
