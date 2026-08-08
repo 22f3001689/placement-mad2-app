@@ -1,4 +1,4 @@
-.PHONY: clean db-clean db-reset venv activate format install db-init db-migrate db-seed frontend-install frontend-build
+.PHONY: clean db-clean db-reset venv activate format install db-init db-migrate db-seed frontend-install frontend-build redis-up redis-down celery-worker celery-beat
 -include .env
 
 ##############################################################################
@@ -73,6 +73,26 @@ db-clean: # Drop database only (keeps migrations)
 	@echo "Dropping database..."
 	-rm -f app.db
 	@echo "Done. Database removed, migrations preserved.\n"
+
+
+##############################################################################
+# Background jobs (Celery + Redis)
+##############################################################################
+redis-up: # Start local Redis via Docker
+	@echo "Starting Redis..."
+	docker compose up -d redis
+	@echo "Done.\n"
+
+redis-down: # Stop local Redis
+	@echo "Stopping Redis..."
+	docker compose down redis
+	@echo "Done.\n"
+
+celery-worker: # Run the Celery worker
+	$(PYTHON) -m celery -A app.celery_app worker --loglevel=info
+
+celery-beat: # Run the Celery Beat scheduler
+	$(PYTHON) -m celery -A app.celery_app beat --loglevel=info
 
 
 clean: # Clean all working folders

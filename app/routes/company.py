@@ -8,12 +8,14 @@ from app import db
 from app.constants import (
     APPLICATION_DECISION_STATUSES,
     APPLICATION_STATUS_PLACED,
+    EXPORT_JOB_TYPE_CSV_EXPORT,
+    EXPORT_JOB_TYPE_PLACEMENT_REPORT,
     JOB_POSITION_STATUS_COMPLETED,
     TERMINAL_APPLICATION_STATUSES,
 )
 from app.decorators import company_approved_required
-from app.models import Application, JobPosition, Placement
-from app.utils import get_logger, iso_or_none, static_url
+from app.models import Application, ExportJob, JobPosition, Placement
+from app.utils import export_job_payload, get_logger, iso_or_none, static_url
 
 company_bp = Blueprint("company", __name__, url_prefix="/api/company")
 
@@ -301,3 +303,79 @@ def schedule_interview(application_id):
         ),
         200,
     )
+
+
+@company_bp.route("/exports", methods=["POST"])
+@company_approved_required
+def create_export():
+    # Deferred import: app.tasks -> app.celery_app -> create_app() -> this
+    # blueprint would be circular if imported at module level.
+    from app.tasks import process_export_job
+
+    job = ExportJob(user_id=current_user.id, job_type=EXPORT_JOB_TYPE_CSV_EXPORT)
+    db.session.add(job)
+    db.session.commit()
+
+    try:
+        process_export_job.delay(job.id)
+    except Exception:
+        logger.exception("Could not enqueue export job_id=%s", job.id)
+        return (
+            jsonify(
+                {
+                    "error": "Export could not be scheduled - background jobs are unavailable"
+                }
+            ),
+            503,
+        )
+
+    logger.info("Export job created: job_id=%s company_id=%s", job.id, current_user.id)
+    return jsonify(export_job_payload(job)), 202
+
+
+@company_bp.route("/exports", methods=["GET"])
+@company_approved_required
+def list_exports():
+    jobs = (
+        ExportJob.query.filter_by(
+            user_id=current_user.id, job_type=EXPORT_JOB_TYPE_CSV_EXPORT
+        )
+        .order_by(ExportJob.created_at.desc())
+        .all()
+    )
+    return jsonify([export_job_payload(j) for j in jobs]), 200
+
+
+@company_bp.route("/exports/<int:job_id>", methods=["GET"])
+@company_approved_required
+def get_export(job_id):
+    job = ExportJob.query.filter_by(
+        id=job_id, user_id=current_user.id, job_type=EXPORT_JOB_TYPE_CSV_EXPORT
+    ).first()
+    if job is None:
+        return jsonify({"error": "Export not found"}), 404
+    return jsonify(export_job_payload(job)), 200
+
+
+@company_bp.route("/reports", methods=["GET"])
+@company_approved_required
+def list_reports():
+    jobs = (
+        ExportJob.query.filter_by(
+            user_id=current_user.id, job_type=EXPORT_JOB_TYPE_PLACEMENT_REPORT
+        )
+        .order_by(ExportJob.created_at.desc())
+        .all()
+    )
+    return jsonify([export_job_payload(j) for j in jobs]), 200
+
+
+@company_bp.route("/reports/<int:job_id>", methods=["GET"])
+@company_approved_required
+def get_report(job_id):
+    job = ExportJob.query.filter_by(
+        id=job_id, user_id=current_user.id, job_type=EXPORT_JOB_TYPE_PLACEMENT_REPORT
+    ).first()
+    if job is None:
+        return jsonify({"error": "Report not found"}), 404
+    return jsonify(export_job_payload(job)), 200

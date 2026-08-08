@@ -29,6 +29,23 @@ const selectedDrive = ref(null)
 const showHistory = ref(false)
 const hasPlacement = ref(false)
 
+const showExports = ref(false)
+const exportJobs = ref([])
+
+async function loadExports() {
+  exportJobs.value = await get('/student/exports')
+}
+
+async function requestExport() {
+  await post('/student/exports')
+  await loadExports()
+}
+
+async function openExports() {
+  await loadExports()
+  showExports.value = true
+}
+
 async function checkPlacement() {
   const res = await fetch('/api/student/placement/confirmation', { credentials: 'include' })
   hasPlacement.value = res.ok
@@ -106,6 +123,9 @@ onMounted(() => {
       <div>
         <button class="btn btn-outline-secondary me-2" @click="openEditProfile">Edit Profile</button>
         <button class="btn btn-outline-secondary me-2" @click="showHistory = true">History</button>
+        <button class="btn btn-outline-secondary me-2" @click="openExports">
+          Export My Applications
+        </button>
         <a
           v-if="hasPlacement"
           href="/api/student/placement/confirmation"
@@ -289,6 +309,40 @@ onMounted(() => {
                 {{ a.placement.joining_date }}
               </span>
               <span v-else>—</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </Modal>
+
+    <Modal :show="showExports" title="Export My Applications" @close="showExports = false">
+      <button class="btn btn-sm btn-primary mb-2" @click="requestExport">
+        Request New Export
+      </button>
+      <button class="btn btn-sm btn-outline-secondary mb-2 ms-2" @click="loadExports">
+        Refresh
+      </button>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Requested</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="job in exportJobs" :key="job.id">
+            <td>{{ job.created_at }}</td>
+            <td>{{ job.status }}</td>
+            <td>
+              <a
+                v-if="job.download_url"
+                :href="job.download_url"
+                download
+                class="btn btn-sm btn-outline-primary"
+              >
+                Download
+              </a>
             </td>
           </tr>
         </tbody>
