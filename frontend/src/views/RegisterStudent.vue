@@ -6,6 +6,7 @@ import { get, post } from '../api/http.js'
 const router = useRouter()
 const username = ref('')
 const password = ref('')
+const email = ref('')
 const name = ref('')
 const branchId = ref('')
 const branches = ref([])
@@ -21,6 +22,7 @@ async function onSubmit() {
     await post('/auth/register/student', {
       username: username.value,
       password: password.value,
+      email: email.value,
       name: name.value,
       branch_id: branchId.value || null,
     })
@@ -46,6 +48,10 @@ async function onSubmit() {
       <div class="mb-3">
         <label class="form-label">Password</label>
         <input v-model="password" type="password" class="form-control" minlength="6" required />
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Email</label>
+        <input v-model="email" type="email" class="form-control" required />
       </div>
       <div class="mb-3">
         <label class="form-label">Branch</label>

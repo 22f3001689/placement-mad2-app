@@ -7,6 +7,7 @@ from app import db, login
 from app.constants import (
     APPLICATION_STATUS_APPLIED,
     COMPANY_APPROVAL_PENDING,
+    EXPORT_JOB_STATUS_PENDING,
     JOB_POSITION_STATUS_ONGOING,
 )
 
@@ -15,6 +16,7 @@ class User(UserMixin, db.Model):
     __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(255), unique=True, nullable=True)
     password_hash = db.Column(db.String(128), nullable=False)
     role = db.Column(db.String(20), nullable=False)  # admin / company / student
     is_active = db.Column(db.Boolean, default=True, nullable=False)
@@ -151,6 +153,7 @@ class Application(db.Model):
     )
     interview_datetime = db.Column(db.DateTime, nullable=True)
     interview_mode = db.Column(db.String(20), nullable=True)
+    interview_reminded_at = db.Column(db.DateTime, nullable=True)
     company_remark = db.Column(db.Text, nullable=True)
 
     student = db.relationship(
@@ -193,6 +196,50 @@ class Placement(db.Model):
 
     def __repr__(self):
         return f"<Placement student={self.student_id} company={self.company_id}>"
+
+
+class EmailTemplate(db.Model):
+    """Seeded, reusable email subject/body with str.format() placeholders.
+
+    Not user-editable via any UI in this milestone - a fixed set, like Branch/Skill.
+    """
+
+    __tablename__ = "email_template"
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(50), unique=True, nullable=False)
+    subject = db.Column(db.String(200), nullable=False)
+    body = db.Column(db.Text, nullable=False)
+
+    def __repr__(self):
+        return f"<EmailTemplate {self.key}>"
+
+
+class ExportJob(db.Model):
+    """One asynchronous background-job request: a user-triggered CSV export or a
+    system-generated placement report. Both share the same status/file-path shape,
+    discriminated by job_type (see app/constants.py).
+
+    For a placement_report, user_id is the owning Company's user_id - a Company IS
+    a User via Company.user_id, so ownership/visibility reuses the same "is this
+    job's user_id mine" check as an export.
+    """
+
+    __tablename__ = "export_job"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    job_type = db.Column(db.String(20), nullable=False)
+    status = db.Column(db.String(20), nullable=False, default=EXPORT_JOB_STATUS_PENDING)
+    file_path = db.Column(db.String(255), nullable=True)
+    period_start = db.Column(db.Date, nullable=True)
+    period_end = db.Column(db.Date, nullable=True)
+    error_message = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    completed_at = db.Column(db.DateTime, nullable=True)
+
+    user = db.relationship("User", backref="export_jobs")
+
+    def __repr__(self):
+        return f"<ExportJob {self.job_type} user={self.user_id} status={self.status}>"
 
 
 @login.user_loader

@@ -1,6 +1,6 @@
 import logging
 
-from flask import url_for
+from flask import current_app, url_for
 
 from app.constants import APPLICATION_STATUS_PLACED
 from app.models import Placement
@@ -26,6 +26,14 @@ def static_url(path):
     return url_for("static", filename=path) if path else None
 
 
+def static_path(path):
+    """Same as static_url(), but usable outside a request context (e.g. in a
+    Celery task) - url_for() needs an active request or SERVER_NAME to build
+    URLs, neither of which a background task has.
+    """
+    return f"{current_app.static_url_path}/{path}" if path else None
+
+
 def iso_or_none(value):
     """ISO-formats a date/datetime, or None if it's falsy."""
     return value.isoformat() if value else None
@@ -37,6 +45,19 @@ def branch_payload(branch):
         "code": branch.code,
         "name": branch.name,
         "description": branch.description,
+    }
+
+
+def export_job_payload(job):
+    return {
+        "id": job.id,
+        "job_type": job.job_type,
+        "status": job.status,
+        "download_url": static_url(job.file_path),
+        "period_start": iso_or_none(job.period_start),
+        "period_end": iso_or_none(job.period_end),
+        "created_at": iso_or_none(job.created_at),
+        "completed_at": iso_or_none(job.completed_at),
     }
 
 
