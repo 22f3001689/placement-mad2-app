@@ -6,9 +6,14 @@ from sqlalchemy import or_
 from werkzeug.utils import secure_filename
 
 from app import db
+from app.constants import (
+    COMPANY_APPROVAL_APPROVED,
+    JOB_POSITION_STATUS_COMPLETED,
+    JOB_POSITION_STATUS_ONGOING,
+)
 from app.decorators import role_required
 from app.models import Application, Branch, Company, JobPosition, Placement, Skill
-from app.utils import static_url
+from app.utils import branch_payload, placement_payloads_by_application_id, static_url
 
 student_bp = Blueprint("student", __name__, url_prefix="/api/student")
 
@@ -23,19 +28,10 @@ def _save_upload(file, subdir):
     return relative_path
 
 
-def _branch_payload(branch):
-    return {
-        "id": branch.id,
-        "code": branch.code,
-        "name": branch.name,
-        "description": branch.description,
-    }
-
-
 def _profile_payload(student):
     return {
         "name": student.name,
-        "branch": _branch_payload(student.branch) if student.branch else None,
+        "branch": branch_payload(student.branch) if student.branch else None,
         "graduation_year": student.graduation_year,
         "cgpa": student.cgpa,
         "skills": [{"id": s.id, "name": s.name} for s in student.skills],
@@ -63,6 +59,14 @@ def _organization_detail_payload(company):
         "industry": company.industry,
         "location": company.location,
     }
+
+
+def _approved_drive_or_none(drive_id):
+    """Returns the drive if it exists and its Company is currently approved, else None."""
+    drive = JobPosition.query.get(drive_id)
+    if drive is None or drive.company.approval_status != COMPANY_APPROVAL_APPROVED:
+        return None
+    return drive
 
 
 def _drive_summary_payload(drive):
@@ -96,22 +100,7 @@ def _drive_detail_payload(drive):
     }
 
 
-def _placement_payload(application):
-    if application.status != "placed":
-        return None
-    placement = Placement.query.filter_by(application_id=application.id).first()
-    if placement is None:
-        return None
-    return {
-        "position_title": placement.position_title,
-        "salary": placement.salary,
-        "joining_date": (
-            placement.joining_date.isoformat() if placement.joining_date else None
-        ),
-    }
-
-
-def _application_payload(application):
+def _application_payload(application, placements_by_application_id):
     return {
         "id": application.id,
         "job_position_id": application.job_position_id,
@@ -127,7 +116,7 @@ def _application_payload(application):
         "interview_mode": application.interview_mode,
         "company_remark": application.company_remark,
         "application_date": application.application_date.isoformat(),
-        "placement": _placement_payload(application),
+        "placement": placements_by_application_id.get(application.id),
     }
 
 
@@ -184,7 +173,7 @@ def update_profile():
 @student_bp.route("/organizations", methods=["GET"])
 @role_required("student")
 def list_organizations():
-    query = Company.query.filter_by(approval_status="approved")
+    query = Company.query.filter_by(approval_status=COMPANY_APPROVAL_APPROVED)
 
     q = request.args.get("q")
     if q:
@@ -196,7 +185,9 @@ def list_organizations():
 @student_bp.route("/organizations/<int:company_id>", methods=["GET"])
 @role_required("student")
 def get_organization(company_id):
-    company = Company.query.filter_by(id=company_id, approval_status="approved").first()
+    company = Company.query.filter_by(
+        id=company_id, approval_status=COMPANY_APPROVAL_APPROVED
+    ).first()
     if company is None:
         return jsonify({"error": "Company not found"}), 404
 
@@ -208,8 +199,8 @@ def get_organization(company_id):
 def list_drives():
     query = (
         JobPosition.query.join(Company, JobPosition.company_id == Company.id)
-        .filter(JobPosition.status == "ongoing")
-        .filter(Company.approval_status == "approved")
+        .filter(JobPosition.status == JOB_POSITION_STATUS_ONGOING)
+        .filter(Company.approval_status == COMPANY_APPROVAL_APPROVED)
     )
 
     company_id = request.args.get("company_id")
@@ -233,8 +224,8 @@ def list_drives():
 @student_bp.route("/drives/<int:drive_id>", methods=["GET"])
 @role_required("student")
 def get_drive(drive_id):
-    drive = JobPosition.query.get(drive_id)
-    if drive is None or drive.company.approval_status != "approved":
+    drive = _approved_drive_or_none(drive_id)
+    if drive is None:
         return jsonify({"error": "Drive not found"}), 404
 
     return jsonify(_drive_detail_payload(drive)), 200
@@ -243,11 +234,11 @@ def get_drive(drive_id):
 @student_bp.route("/drives/<int:drive_id>/apply", methods=["POST"])
 @role_required("student")
 def apply_to_drive(drive_id):
-    drive = JobPosition.query.get(drive_id)
-    if drive is None or drive.company.approval_status != "approved":
+    drive = _approved_drive_or_none(drive_id)
+    if drive is None:
         return jsonify({"error": "Drive not found"}), 404
 
-    if drive.status == "completed":
+    if drive.status == JOB_POSITION_STATUS_COMPLETED:
         return jsonify({"error": "This Drive is no longer accepting applications"}), 409
 
     student_id = current_user.student_profile.id
@@ -267,7 +258,16 @@ def apply_to_drive(drive_id):
 @role_required("student")
 def list_applications():
     applications = current_user.student_profile.applications
-    return jsonify([_application_payload(a) for a in applications]), 200
+    placements_by_application_id = placement_payloads_by_application_id(applications)
+    return (
+        jsonify(
+            [
+                _application_payload(a, placements_by_application_id)
+                for a in applications
+            ]
+        ),
+        200,
+    )
 
 
 @student_bp.route("/placement/confirmation", methods=["GET"])

@@ -2,16 +2,16 @@ from flask import Blueprint, jsonify, request
 from sqlalchemy import or_
 
 from app import db
-from app.constants import COMPANY_APPROVAL_STATUSES, JOB_POSITION_STATUSES
+from app.constants import (
+    COMPANY_APPROVAL_APPROVED,
+    COMPANY_DECISION_STATUSES,
+    JOB_POSITION_STATUS_COMPLETED,
+)
 from app.decorators import role_required
-from app.models import Application, Company, JobPosition, Placement, Student, User
-from app.utils import static_url
+from app.models import Application, Company, JobPosition, Student, User
+from app.utils import branch_payload, placement_payloads_by_application_id, static_url
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/api/admin")
-
-COMPANY_DECISION_STATUSES = tuple(
-    s for s in COMPANY_APPROVAL_STATUSES if s != "pending"
-)
 
 
 def _company_payload(company):
@@ -70,16 +70,7 @@ def _application_payload(application):
     }
 
 
-def _application_history_payload(application):
-    placement = None
-    if application.status == "placed":
-        p = Placement.query.filter_by(application_id=application.id).first()
-        if p is not None:
-            placement = {
-                "position_title": p.position_title,
-                "salary": p.salary,
-                "joining_date": p.joining_date.isoformat() if p.joining_date else None,
-            }
+def _application_history_payload(application, placements_by_application_id):
     return {
         "id": application.id,
         "job_title": application.job_position.title,
@@ -93,34 +84,31 @@ def _application_history_payload(application):
         ),
         "interview_mode": application.interview_mode,
         "company_remark": application.company_remark,
-        "placement": placement,
+        "placement": placements_by_application_id.get(application.id),
     }
 
 
 def _student_detail_payload(student):
+    placements_by_application_id = placement_payloads_by_application_id(
+        student.applications
+    )
     return {
         "id": student.id,
         "user_id": student.user_id,
         "username": student.user.username,
         "is_active": student.user.is_active,
         "name": student.name,
-        "branch": (
-            {
-                "id": student.branch.id,
-                "code": student.branch.code,
-                "name": student.branch.name,
-                "description": student.branch.description,
-            }
-            if student.branch
-            else None
-        ),
+        "branch": branch_payload(student.branch) if student.branch else None,
         "graduation_year": student.graduation_year,
         "cgpa": student.cgpa,
         "skills": [{"id": s.id, "name": s.name} for s in student.skills],
         "contact": student.contact,
         "photo_url": static_url(student.photo_path),
         "resume_url": static_url(student.resume_path),
-        "applications": [_application_history_payload(a) for a in student.applications],
+        "applications": [
+            _application_history_payload(a, placements_by_application_id)
+            for a in student.applications
+        ],
     }
 
 
@@ -132,7 +120,7 @@ def dashboard():
             {
                 "students": Student.query.count(),
                 "companies": Company.query.filter_by(
-                    approval_status="approved"
+                    approval_status=COMPANY_APPROVAL_APPROVED
                 ).count(),
                 "job_positions": JobPosition.query.count(),
                 "applications": Application.query.count(),
@@ -224,7 +212,7 @@ def complete_job_position(job_position_id):
     if job_position is None:
         return jsonify({"error": "Job Posting not found"}), 404
 
-    job_position.status = JOB_POSITION_STATUSES[1]
+    job_position.status = JOB_POSITION_STATUS_COMPLETED
     db.session.commit()
     return jsonify({"id": job_position.id, "status": job_position.status}), 200
 

@@ -9,6 +9,8 @@ export const APPLICATION_STATUSES = [
   { value: 'placed', label: 'Placed' },
 ]
 
+export const TERMINAL_APPLICATION_STATUSES = ['placed', 'rejected']
+
 export const JOB_POSITION_STATUSES = [
   { value: 'ongoing', label: 'Ongoing' },
   { value: 'completed', label: 'Completed' },

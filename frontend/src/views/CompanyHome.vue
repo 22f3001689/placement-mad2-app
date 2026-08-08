@@ -4,7 +4,11 @@ import { useRouter } from 'vue-router'
 import { get, post } from '../api/http.js'
 import { auth, logout } from '../state/auth.js'
 import Modal from '../components/Modal.vue'
-import { APPLICATION_STATUSES, JOB_POSITION_STATUSES } from '../constants.js'
+import {
+  APPLICATION_STATUSES,
+  JOB_POSITION_STATUSES,
+  TERMINAL_APPLICATION_STATUSES,
+} from '../constants.js'
 
 const router = useRouter()
 
@@ -26,7 +30,7 @@ const selectedApplication = ref(null)
 const decisionStatuses = APPLICATION_STATUSES.filter(
   (s) => !['applied', 'placed'].includes(s.value)
 )
-const isFinalStatus = (status) => ['placed', 'rejected'].includes(status)
+const isFinalStatus = (status) => TERMINAL_APPLICATION_STATUSES.includes(status)
 
 const placementTitle = ref('')
 const placementSalary = ref('')

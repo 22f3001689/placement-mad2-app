@@ -5,8 +5,9 @@ from flask_login import current_user
 
 from app import db
 from app.constants import (
-    APPLICATION_STATUSES,
-    JOB_POSITION_STATUSES,
+    APPLICATION_DECISION_STATUSES,
+    APPLICATION_STATUS_PLACED,
+    JOB_POSITION_STATUS_COMPLETED,
     TERMINAL_APPLICATION_STATUSES,
 )
 from app.decorators import company_approved_required
@@ -14,8 +15,6 @@ from app.models import Application, JobPosition, Placement
 from app.utils import static_url
 
 company_bp = Blueprint("company", __name__, url_prefix="/api/company")
-
-APPLICATION_DECISION_STATUSES = tuple(s for s in APPLICATION_STATUSES if s != "applied")
 
 
 def _own_drive_or_404(drive_id):
@@ -139,7 +138,7 @@ def list_drives():
 @company_approved_required
 def complete_drive(drive_id):
     drive = _own_drive_or_404(drive_id)
-    drive.status = JOB_POSITION_STATUSES[1]
+    drive.status = JOB_POSITION_STATUS_COMPLETED
     db.session.commit()
     return jsonify({"id": drive.id, "status": drive.status}), 200
 
@@ -187,8 +186,7 @@ def decide_application(application_id):
     if application.status in TERMINAL_APPLICATION_STATUSES:
         return jsonify({"error": "This application's outcome is final"}), 409
 
-    placement = None
-    if status == "placed":
+    if status == APPLICATION_STATUS_PLACED:
         position_title = data.get("position_title")
         joining_date = data.get("joining_date")
         if not position_title or not joining_date:
