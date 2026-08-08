@@ -1,14 +1,27 @@
 from flask import Blueprint, jsonify, request
 from sqlalchemy import or_
+from sqlalchemy.orm import contains_eager, joinedload
 
 from app import db
+from app.constants import (
+    COMPANY_APPROVAL_APPROVED,
+    COMPANY_DECISION_STATUSES,
+    JOB_POSITION_STATUS_COMPLETED,
+    ROLE_ADMIN,
+)
 from app.decorators import role_required
 from app.models import Application, Company, JobPosition, Student, User
-from app.utils import static_url
+from app.utils import (
+    branch_payload,
+    get_logger,
+    iso_or_none,
+    placement_payloads_by_application_id,
+    static_url,
+)
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/api/admin")
 
-COMPANY_DECISION_STATUSES = ("approved", "rejected")
+logger = get_logger(__name__)
 
 
 def _company_payload(company):
@@ -67,15 +80,53 @@ def _application_payload(application):
     }
 
 
+def _application_history_payload(application, placements_by_application_id):
+    return {
+        "id": application.id,
+        "job_title": application.job_position.title,
+        "company_name": application.job_position.company.company_name,
+        "status": application.status,
+        "application_date": application.application_date.isoformat(),
+        "interview_datetime": iso_or_none(application.interview_datetime),
+        "interview_mode": application.interview_mode,
+        "company_remark": application.company_remark,
+        "placement": placements_by_application_id.get(application.id),
+    }
+
+
+def _student_detail_payload(student):
+    placements_by_application_id = placement_payloads_by_application_id(
+        student.applications
+    )
+    return {
+        "id": student.id,
+        "user_id": student.user_id,
+        "username": student.user.username,
+        "is_active": student.user.is_active,
+        "name": student.name,
+        "branch": branch_payload(student.branch) if student.branch else None,
+        "graduation_year": student.graduation_year,
+        "cgpa": student.cgpa,
+        "skills": [{"id": s.id, "name": s.name} for s in student.skills],
+        "contact": student.contact,
+        "photo_url": static_url(student.photo_path),
+        "resume_url": static_url(student.resume_path),
+        "applications": [
+            _application_history_payload(a, placements_by_application_id)
+            for a in student.applications
+        ],
+    }
+
+
 @admin_bp.route("/dashboard", methods=["GET"])
-@role_required("admin")
+@role_required(ROLE_ADMIN)
 def dashboard():
     return (
         jsonify(
             {
                 "students": Student.query.count(),
                 "companies": Company.query.filter_by(
-                    approval_status="approved"
+                    approval_status=COMPANY_APPROVAL_APPROVED
                 ).count(),
                 "job_positions": JobPosition.query.count(),
                 "applications": Application.query.count(),
@@ -86,9 +137,9 @@ def dashboard():
 
 
 @admin_bp.route("/companies", methods=["GET"])
-@role_required("admin")
+@role_required(ROLE_ADMIN)
 def list_companies():
-    query = Company.query.join(User, Company.user_id == User.id)
+    query = Company.query.options(joinedload(Company.user))
 
     status = request.args.get("status")
     if status:
@@ -104,7 +155,7 @@ def list_companies():
 
 
 @admin_bp.route("/companies/<int:company_id>/decision", methods=["POST"])
-@role_required("admin")
+@role_required(ROLE_ADMIN)
 def decide_company(company_id):
     data = request.get_json(silent=True) or {}
     status = data.get("status")
@@ -117,13 +168,18 @@ def decide_company(company_id):
 
     company.approval_status = status
     db.session.commit()
+    logger.info(
+        "Company approval decision: company_id=%s status=%s", company.id, status
+    )
     return jsonify({"id": company.id, "approval_status": company.approval_status}), 200
 
 
 @admin_bp.route("/students", methods=["GET"])
-@role_required("admin")
+@role_required(ROLE_ADMIN)
 def list_students():
-    query = Student.query.join(User, Student.user_id == User.id)
+    query = Student.query.join(User, Student.user_id == User.id).options(
+        contains_eager(Student.user)
+    )
 
     q = request.args.get("q")
     if q:
@@ -138,10 +194,20 @@ def list_students():
     return jsonify([_student_payload(s) for s in query.all()]), 200
 
 
+@admin_bp.route("/students/<int:student_id>", methods=["GET"])
+@role_required(ROLE_ADMIN)
+def get_student(student_id):
+    student = Student.query.get(student_id)
+    if student is None:
+        return jsonify({"error": "Student not found"}), 404
+
+    return jsonify(_student_detail_payload(student)), 200
+
+
 @admin_bp.route("/job-positions", methods=["GET"])
-@role_required("admin")
+@role_required(ROLE_ADMIN)
 def list_job_positions():
-    query = JobPosition.query
+    query = JobPosition.query.options(joinedload(JobPosition.company))
 
     status = request.args.get("status")
     if status:
@@ -151,33 +217,43 @@ def list_job_positions():
 
 
 @admin_bp.route("/job-positions/<int:job_position_id>/complete", methods=["POST"])
-@role_required("admin")
+@role_required(ROLE_ADMIN)
 def complete_job_position(job_position_id):
     job_position = JobPosition.query.get(job_position_id)
     if job_position is None:
         return jsonify({"error": "Job Posting not found"}), 404
 
-    job_position.status = "completed"
+    job_position.status = JOB_POSITION_STATUS_COMPLETED
     db.session.commit()
+    logger.info("Job Position closed by Admin: job_position_id=%s", job_position.id)
     return jsonify({"id": job_position.id, "status": job_position.status}), 200
 
 
 @admin_bp.route("/applications", methods=["GET"])
-@role_required("admin")
+@role_required(ROLE_ADMIN)
 def list_applications():
-    applications = Application.query.all()
+    applications = Application.query.options(
+        joinedload(Application.student),
+        joinedload(Application.job_position).joinedload(JobPosition.company),
+    ).all()
     return jsonify([_application_payload(a) for a in applications]), 200
 
 
 @admin_bp.route("/users/<int:user_id>/toggle-active", methods=["POST"])
-@role_required("admin")
+@role_required(ROLE_ADMIN)
 def toggle_active(user_id):
     user = User.query.get(user_id)
     if user is None:
         return jsonify({"error": "User not found"}), 404
-    if user.role == "admin":
+    if user.role == ROLE_ADMIN:
         return jsonify({"error": "Cannot deactivate the Admin account"}), 403
 
     user.is_active = not user.is_active
     db.session.commit()
+    logger.info(
+        "User active-status toggled: user_id=%s role=%s is_active=%s",
+        user.id,
+        user.role,
+        user.is_active,
+    )
     return jsonify({"id": user.id, "is_active": user.is_active}), 200

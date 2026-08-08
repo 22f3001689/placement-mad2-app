@@ -13,11 +13,23 @@ from app.models import (
 )
 
 BRANCHES = [
-    ("CSE", "Computer Science and Engineering", "Software, algorithms, and systems design."),
+    (
+        "CSE",
+        "Computer Science and Engineering",
+        "Software, algorithms, and systems design.",
+    ),
     ("ME", "Mechanical Engineering", "Design, manufacturing, and mechanical systems."),
-    ("EE", "Electrical Engineering", "Power systems, circuits, and electrical machines."),
+    (
+        "EE",
+        "Electrical Engineering",
+        "Power systems, circuits, and electrical machines.",
+    ),
     ("DS", "Data Science", "Statistics, machine learning, and data analytics."),
-    ("ECE", "Electronics and Communication Engineering", "Electronics, signals, and communication systems."),
+    (
+        "ECE",
+        "Electronics and Communication Engineering",
+        "Electronics, signals, and communication systems.",
+    ),
 ]
 
 SKILLS = [
@@ -122,7 +134,7 @@ def seed_database():
         application = Application(
             student_id=student.id,
             job_position_id=job_position.id,
-            status="selected",
+            status="placed",
         )
         db.session.add(application)
         db.session.commit()

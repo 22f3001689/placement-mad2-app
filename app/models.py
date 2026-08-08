@@ -4,6 +4,11 @@ from flask_login import UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from app import db, login
+from app.constants import (
+    APPLICATION_STATUS_APPLIED,
+    COMPANY_APPROVAL_PENDING,
+    JOB_POSITION_STATUS_ONGOING,
+)
 
 
 class User(UserMixin, db.Model):
@@ -38,7 +43,9 @@ class Company(db.Model):
     website = db.Column(db.String(255), nullable=True)
     logo_path = db.Column(db.String(255), nullable=True)
     overview = db.Column(db.Text, nullable=True)
-    approval_status = db.Column(db.String(20), nullable=False, default="pending")
+    approval_status = db.Column(
+        db.String(20), nullable=False, default=COMPANY_APPROVAL_PENDING
+    )
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     user = db.relationship("User", backref=db.backref("company_profile", uselist=False))
@@ -115,7 +122,9 @@ class JobPosition(db.Model):
     location = db.Column(db.String(150), nullable=True)
     skills_required = db.Column(db.Text, nullable=True)
     application_deadline = db.Column(db.DateTime, nullable=False)
-    status = db.Column(db.String(20), nullable=False, default="ongoing")
+    status = db.Column(
+        db.String(20), nullable=False, default=JOB_POSITION_STATUS_ONGOING
+    )
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     company = db.relationship(
@@ -137,7 +146,9 @@ class Application(db.Model):
         db.Integer, db.ForeignKey("job_position.id"), nullable=False
     )
     application_date = db.Column(db.DateTime, default=datetime.utcnow)
-    status = db.Column(db.String(20), nullable=False, default="applied")
+    status = db.Column(
+        db.String(20), nullable=False, default=APPLICATION_STATUS_APPLIED
+    )
     interview_datetime = db.Column(db.DateTime, nullable=True)
     interview_mode = db.Column(db.String(20), nullable=True)
     company_remark = db.Column(db.Text, nullable=True)

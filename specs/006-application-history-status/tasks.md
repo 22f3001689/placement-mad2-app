@@ -17,7 +17,7 @@
 
 ## Phase 1: Setup
 
-- [ ] T001 Confirm on branch `feat/milestone-6-status-tracking` off latest `main` (no new dependencies to install for this milestone)
+- [X] T001 Confirm on branch `feat/milestone-6-status-tracking` off latest `main` (no new dependencies to install for this milestone)
 
 ---
 
@@ -27,14 +27,14 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T002 Author Alembic migration in `migrations/versions/` that runs `UPDATE application SET status='interview' WHERE status='waiting'` and `UPDATE application SET status='offer' WHERE status='selected'` in `upgrade()`, with the reverse mapping in `downgrade()` (per data-model.md)
-- [ ] T003 Run `flask db upgrade` and verify via `sqlite3 app.db "SELECT DISTINCT status FROM application;"` that no `waiting`/`selected` rows remain
-- [ ] T004 Update `data-seeds/seed_data.py`'s sample `Application` to use `status="placed"` instead of `status="selected"` (it already creates a matching `Placement` row — align it with the new invariant that only `placed` applications have one), then re-run `make db-seed` and confirm the app still starts cleanly
-- [ ] T004b Create `app/constants.py` defining three enumeration tuples as the single source of truth, replacing scattered literals: `APPLICATION_STATUSES = ("applied", "shortlisted", "interview", "offer", "rejected", "placed")` + `TERMINAL_APPLICATION_STATUSES = ("placed", "rejected")`; `JOB_POSITION_STATUSES = ("ongoing", "completed")`; `COMPANY_APPROVAL_STATUSES = ("pending", "approved", "rejected")`. Update `app/models.py`'s three corresponding `default=...` column args to reference `X[0]` instead of repeating the literal.
-- [ ] T004c [P] Create `frontend/src/constants.js` exporting the same three enumerations as ordered `{value, label}` lists, mirroring `app/constants.py`, for Vue views to import instead of hardcoding status strings/labels
-- [ ] T004d [P] In `app/routes/admin.py`, replace the literal `COMPANY_DECISION_STATUSES` tuple with `tuple(s for s in COMPANY_APPROVAL_STATUSES if s != "pending")` imported from `app.constants`, and in `complete_job_position` replace the literal `"completed"` with `JOB_POSITION_STATUSES[1]`
-- [ ] T004e [P] In `app/routes/company.py`'s `complete_drive`, replace the literal `"completed"` with `JOB_POSITION_STATUSES[1]` imported from `app.constants`
-- [ ] T004f [P] In `frontend/src/views/AdminHome.vue` and `frontend/src/views/CompanyHome.vue`, replace hardcoded `?status=ongoing`/`?status=completed`/`?status=pending`/`?status=approved` query-string literals with values from the imported `JOB_POSITION_STATUSES`/`COMPANY_APPROVAL_STATUSES` in `frontend/src/constants.js`
+- [X] T002 Author Alembic migration in `migrations/versions/` that runs `UPDATE application SET status='interview' WHERE status='waiting'` and `UPDATE application SET status='offer' WHERE status='selected'` in `upgrade()`, with the reverse mapping in `downgrade()` (per data-model.md)
+- [X] T003 Run `flask db upgrade` and verify via `sqlite3 app.db "SELECT DISTINCT status FROM application;"` that no `waiting`/`selected` rows remain
+- [X] T004 Update `data-seeds/seed_data.py`'s sample `Application` to use `status="placed"` instead of `status="selected"` (it already creates a matching `Placement` row — align it with the new invariant that only `placed` applications have one), then re-run `make db-seed` and confirm the app still starts cleanly
+- [X] T004b Create `app/constants.py` defining three enumeration tuples as the single source of truth, replacing scattered literals: `APPLICATION_STATUSES = ("applied", "shortlisted", "interview", "offer", "rejected", "placed")` + `TERMINAL_APPLICATION_STATUSES = ("placed", "rejected")`; `JOB_POSITION_STATUSES = ("ongoing", "completed")`; `COMPANY_APPROVAL_STATUSES = ("pending", "approved", "rejected")`. Update `app/models.py`'s three corresponding `default=...` column args to reference `X[0]` instead of repeating the literal.
+- [X] T004c [P] Create `frontend/src/constants.js` exporting the same three enumerations as ordered `{value, label}` lists, mirroring `app/constants.py`, for Vue views to import instead of hardcoding status strings/labels
+- [X] T004d [P] In `app/routes/admin.py`, replace the literal `COMPANY_DECISION_STATUSES` tuple with `tuple(s for s in COMPANY_APPROVAL_STATUSES if s != "pending")` imported from `app.constants`, and in `complete_job_position` replace the literal `"completed"` with `JOB_POSITION_STATUSES[1]`
+- [X] T004e [P] In `app/routes/company.py`'s `complete_drive`, replace the literal `"completed"` with `JOB_POSITION_STATUSES[1]` imported from `app.constants`
+- [X] T004f [P] In `frontend/src/views/AdminHome.vue` and `frontend/src/views/CompanyHome.vue`, replace hardcoded `?status=ongoing`/`?status=completed`/`?status=pending`/`?status=approved` query-string literals with values from the imported `JOB_POSITION_STATUSES`/`COMPANY_APPROVAL_STATUSES` in `frontend/src/constants.js`
 
 **Checkpoint**: Foundation ready — `Application.status` values are now `applied/shortlisted/interview/offer/rejected/placed` everywhere in the DB; `Application.status`, `JobPosition.status`, and `Company.approval_status` are each defined exactly once in `app/constants.py`/`frontend/src/constants.js` instead of as scattered literals; seed data matches the new vocabulary.
 
@@ -48,11 +48,11 @@
 
 ### Implementation for User Story 1
 
-- [ ] T005 [US1] In `app/routes/company.py`, replace the literal `APPLICATION_DECISION_STATUSES` tuple with `tuple(s for s in APPLICATION_STATUSES if s != "applied")` imported from `app.constants`, and update the `400` error message to match
-- [ ] T006 [US1] In `app/routes/company.py`'s `decide_application`, add a terminal-status guard using `app.constants.TERMINAL_APPLICATION_STATUSES`: if `application.status` is already in that tuple, return `409` before applying any change (per contracts/company-api.md)
-- [ ] T007 [US1] In `app/routes/company.py`'s `decide_application`, when the new `status == "placed"`: require `position_title` and `joining_date` in the request body (`400` if missing), parse `joining_date` as an ISO date, and create a `Placement` row (`student_id`/`company_id` from `application.student`/`application.job_position.company`, `application_id=application.id`, `position_title`, `salary`, `joining_date`) in the same transaction, importing `Placement` at the top of the file
-- [ ] T008 [P] [US1] In `frontend/src/views/CompanyHome.vue`, replace the hardcoded status `<select>` options in the "Student Application" modal with `v-for` over the imported `APPLICATION_STATUSES` from `frontend/src/constants.js`, and add inline inputs for position title/salary/joining date plus a "Confirm Placement" action that only appears/applies when `placed` is selected, calling `setStatus` with the extra fields
-- [ ] T009 [US1] Manually verify via quickstart.md Scenario 1 (full lifecycle Applied→...→Placed, confirm Placement created, confirm further status change is rejected)
+- [X] T005 [US1] In `app/routes/company.py`, replace the literal `APPLICATION_DECISION_STATUSES` tuple with `tuple(s for s in APPLICATION_STATUSES if s != "applied")` imported from `app.constants`, and update the `400` error message to match
+- [X] T006 [US1] In `app/routes/company.py`'s `decide_application`, add a terminal-status guard using `app.constants.TERMINAL_APPLICATION_STATUSES`: if `application.status` is already in that tuple, return `409` before applying any change (per contracts/company-api.md)
+- [X] T007 [US1] In `app/routes/company.py`'s `decide_application`, when the new `status == "placed"`: require `position_title` and `joining_date` in the request body (`400` if missing), parse `joining_date` as an ISO date, and create a `Placement` row (`student_id`/`company_id` from `application.student`/`application.job_position.company`, `application_id=application.id`, `position_title`, `salary`, `joining_date`) in the same transaction, importing `Placement` at the top of the file
+- [X] T008 [P] [US1] In `frontend/src/views/CompanyHome.vue`, replace the hardcoded status `<select>` options in the "Student Application" modal with `v-for` over the imported `APPLICATION_STATUSES` from `frontend/src/constants.js`, and add inline inputs for position title/salary/joining date plus a "Confirm Placement" action that only appears/applies when `placed` is selected, calling `setStatus` with the extra fields
+- [X] T009 [US1] Manually verify via quickstart.md Scenario 1 (full lifecycle Applied→...→Placed, confirm Placement created, confirm further status change is rejected)
 
 **Checkpoint**: User Story 1 is fully functional and independently testable.
 
@@ -66,9 +66,9 @@
 
 ### Implementation for User Story 2
 
-- [ ] T010 [US2] In `app/routes/student.py`'s `_application_payload`, add a `"placement"` field: `None` unless `application.status == "placed"`, in which case a dict with `position_title`/`salary`/`joining_date` from that application's `Placement` row (query `Placement.query.filter_by(application_id=application.id).first()`)
-- [ ] T011 [P] [US2] In `frontend/src/views/StudentHome.vue`'s History modal table, add a "Placement" column/row that shows `a.placement.position_title` (and salary/joining date) when `a.placement` is present, otherwise blank; also switch the existing "Results" column from the raw `a.status` string to its `label` via `frontend/src/constants.js`'s `APPLICATION_STATUSES`
-- [ ] T012 [US2] Manually verify via quickstart.md Scenario 2 (History view shows all statuses plus placement outcome for the Placed one)
+- [X] T010 [US2] In `app/routes/student.py`'s `_application_payload`, add a `"placement"` field: `None` unless `application.status == "placed"`, in which case a dict with `position_title`/`salary`/`joining_date` from that application's `Placement` row (query `Placement.query.filter_by(application_id=application.id).first()`)
+- [X] T011 [P] [US2] In `frontend/src/views/StudentHome.vue`'s History modal table, add a "Placement" column/row that shows `a.placement.position_title` (and salary/joining date) when `a.placement` is present, otherwise blank; also switch the existing "Results" column from the raw `a.status` string to its `label` via `frontend/src/constants.js`'s `APPLICATION_STATUSES`
+- [X] T012 [US2] Manually verify via quickstart.md Scenario 2 (History view shows all statuses plus placement outcome for the Placed one)
 
 **Checkpoint**: User Stories 1 AND 2 both work independently.
 
@@ -82,11 +82,11 @@
 
 ### Implementation for User Story 3
 
-- [ ] T013 [US3] In `app/routes/admin.py`, add `GET /admin/students/<int:student_id>` (`role_required("admin")`, `404` if not found) returning the Student's full profile (reuse the shape of `student.py`'s `_profile_payload`: name, branch, graduation_year, cgpa, skills, contact, photo_url, resume_url) plus an `"applications"` list (job_title, company_name, status, application_date, interview_datetime, interview_mode, company_remark, placement — same placement rule as T010), per contracts/admin-api.md
-- [ ] T014 [P] [US3] In `app/routes/company.py`'s `_application_detail_payload`, add `"student_graduation_year": student.graduation_year` and `"student_contact": student.contact`, per contracts/company-api.md
-- [ ] T015 [P] [US3] In `frontend/src/views/AdminHome.vue`, add a "View Profile" button per row in the "Registered Students" section that fetches `GET /admin/students/<id>` and opens a new modal showing the full profile fields and an application-history table (status shown via `frontend/src/constants.js`'s `APPLICATION_STATUSES` label lookup, same as T011)
-- [ ] T016 [P] [US3] In `frontend/src/views/CompanyHome.vue`'s "Student Application" modal, add `<p><strong>Graduation Year:</strong> {{ selectedApplication.student_graduation_year }}</p>` and `<p><strong>Contact:</strong> {{ selectedApplication.student_contact }}</p>`
-- [ ] T017 [US3] Manually verify via quickstart.md Scenario 3 (Admin profile+history modal; Company sees graduation year/contact)
+- [X] T013 [US3] In `app/routes/admin.py`, add `GET /admin/students/<int:student_id>` (`role_required("admin")`, `404` if not found) returning the Student's full profile (reuse the shape of `student.py`'s `_profile_payload`: name, branch, graduation_year, cgpa, skills, contact, photo_url, resume_url) plus an `"applications"` list (job_title, company_name, status, application_date, interview_datetime, interview_mode, company_remark, placement — same placement rule as T010), per contracts/admin-api.md
+- [X] T014 [P] [US3] In `app/routes/company.py`'s `_application_detail_payload`, add `"student_graduation_year": student.graduation_year` and `"student_contact": student.contact`, per contracts/company-api.md
+- [X] T015 [P] [US3] In `frontend/src/views/AdminHome.vue`, add a "View Profile" button per row in the "Registered Students" section that fetches `GET /admin/students/<id>` and opens a new modal showing the full profile fields and an application-history table (status shown via `frontend/src/constants.js`'s `APPLICATION_STATUSES` label lookup, same as T011)
+- [X] T016 [P] [US3] In `frontend/src/views/CompanyHome.vue`'s "Student Application" modal, add `<p><strong>Graduation Year:</strong> {{ selectedApplication.student_graduation_year }}</p>` and `<p><strong>Contact:</strong> {{ selectedApplication.student_contact }}</p>`
+- [X] T017 [US3] Manually verify via quickstart.md Scenario 3 (Admin profile+history modal; Company sees graduation year/contact)
 
 **Checkpoint**: User Stories 1, 2, and 3 all work independently.
 
@@ -100,10 +100,10 @@
 
 ### Implementation for User Story 4
 
-- [ ] T018 [US4] In `app/routes/student.py`'s `list_drives`, add `.filter(Company.approval_status == "approved")` to the existing join (per contracts/student-api.md)
-- [ ] T019 [US4] In `app/routes/student.py`'s `get_drive`, after loading the drive, return `404` if `drive.company.approval_status != "approved"` (same 404 message/shape as "Drive not found")
-- [ ] T020 [US4] In `app/routes/student.py`'s `apply_to_drive`, after loading the drive, return `404` if `drive.company.approval_status != "approved"` (before the existing completed/duplicate checks)
-- [ ] T021 [US4] Manually verify via quickstart.md Scenario 4 (revoke approval, confirm drive disappears/blocks apply, confirm prior history for that company stays visible in Student/Admin/Company views)
+- [X] T018 [US4] In `app/routes/student.py`'s `list_drives`, add `.filter(Company.approval_status == "approved")` to the existing join (per contracts/student-api.md)
+- [X] T019 [US4] In `app/routes/student.py`'s `get_drive`, after loading the drive, return `404` if `drive.company.approval_status != "approved"` (same 404 message/shape as "Drive not found")
+- [X] T020 [US4] In `app/routes/student.py`'s `apply_to_drive`, after loading the drive, return `404` if `drive.company.approval_status != "approved"` (before the existing completed/duplicate checks)
+- [X] T021 [US4] Manually verify via quickstart.md Scenario 4 (revoke approval, confirm drive disappears/blocks apply, confirm prior history for that company stays visible in Student/Admin/Company views)
 
 **Checkpoint**: All four user stories are independently functional.
 
@@ -111,9 +111,9 @@
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-- [ ] T022 Run `make format` (ruff + black) across all touched backend files
-- [ ] T023 Update `VIVA_PREP.md`'s API Reference, Database Schema, and Milestone Map sections to reflect the new status vocabulary, the new `/admin/students/<id>` endpoint, and Milestone 6 moving to ✅ (per the user's "keep it a running document" instruction — this file stays untracked/gitignored, not part of the PR)
-- [ ] T024 Full manual regression: re-run quickstart.md Scenarios 1-4 end-to-end in one sitting after all tasks above are complete
+- [X] T022 Run `make format` (ruff + black) across all touched backend files
+- [X] T023 Update `VIVA_PREP.md`'s API Reference, Database Schema, and Milestone Map sections to reflect the new status vocabulary, the new `/admin/students/<id>` endpoint, and Milestone 6 moving to ✅ (per the user's "keep it a running document" instruction — this file stays untracked/gitignored, not part of the PR)
+- [X] T024 Full manual regression: re-run quickstart.md Scenarios 1-4 end-to-end in one sitting after all tasks above are complete
 
 ---
 

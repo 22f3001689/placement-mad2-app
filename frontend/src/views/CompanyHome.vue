@@ -4,39 +4,58 @@ import { useRouter } from 'vue-router'
 import { get, post } from '../api/http.js'
 import { auth, logout } from '../state/auth.js'
 import Modal from '../components/Modal.vue'
+import {
+  APPLICATION_STATUS_APPLIED,
+  APPLICATION_STATUS_PLACED,
+  APPLICATION_STATUSES,
+  JOB_POSITION_STATUS_COMPLETED,
+  JOB_POSITION_STATUS_ONGOING,
+  TERMINAL_APPLICATION_STATUSES,
+} from '../constants.js'
 
 const router = useRouter()
 
 const upcomingDrives = ref([])
 const closedDrives = ref([])
 const showCreateDrive = ref(false)
-const newDrive = ref({
-  drive_name: '',
-  title: '',
-  description: '',
-  eligibility_criteria: '',
-  application_deadline: '',
-})
 
-const currentDrive = ref(null)
-const applicationsForDrive = ref(null) // { drive, applications } or null
-const selectedApplication = ref(null)
-
-async function loadDrives() {
-  upcomingDrives.value = await get('/company/drives?status=ongoing')
-  closedDrives.value = await get('/company/drives?status=completed')
-}
-
-async function createDrive() {
-  await post('/company/drives', newDrive.value)
-  showCreateDrive.value = false
-  newDrive.value = {
+function emptyDrive() {
+  return {
     drive_name: '',
     title: '',
     description: '',
     eligibility_criteria: '',
     application_deadline: '',
   }
+}
+
+const newDrive = ref(emptyDrive())
+
+const currentDrive = ref(null)
+const applicationsForDrive = ref(null) // { drive, applications } or null
+const selectedApplication = ref(null)
+
+// "Placed" is set via the separate Mark-as-Placed form below, not this dropdown.
+const decisionStatuses = APPLICATION_STATUSES.filter(
+  (s) => ![APPLICATION_STATUS_APPLIED, APPLICATION_STATUS_PLACED].includes(s.value)
+)
+const isFinalStatus = (status) => TERMINAL_APPLICATION_STATUSES.includes(status)
+
+const placementTitle = ref('')
+const placementSalary = ref('')
+const placementJoiningDate = ref('')
+
+async function loadDrives() {
+  ;[upcomingDrives.value, closedDrives.value] = await Promise.all([
+    get(`/company/drives?status=${JOB_POSITION_STATUS_ONGOING}`),
+    get(`/company/drives?status=${JOB_POSITION_STATUS_COMPLETED}`),
+  ])
+}
+
+async function createDrive() {
+  await post('/company/drives', newDrive.value)
+  showCreateDrive.value = false
+  newDrive.value = emptyDrive()
   await loadDrives()
 }
 
@@ -63,6 +82,19 @@ async function backToApplications() {
 async function setStatus(status) {
   await post(`/company/applications/${selectedApplication.value.id}/decision`, { status })
   selectedApplication.value.status = status
+}
+
+async function markPlaced() {
+  await post(`/company/applications/${selectedApplication.value.id}/decision`, {
+    status: APPLICATION_STATUS_PLACED,
+    position_title: placementTitle.value,
+    salary: placementSalary.value || null,
+    joining_date: placementJoiningDate.value,
+  })
+  selectedApplication.value.status = APPLICATION_STATUS_PLACED
+  placementTitle.value = ''
+  placementSalary.value = ''
+  placementJoiningDate.value = ''
 }
 
 async function setInterview(interviewDatetime) {
@@ -178,8 +210,10 @@ onMounted(loadDrives)
         />
         <p><strong>Student Name:</strong> {{ selectedApplication.student_name }}</p>
         <p><strong>Department:</strong> {{ selectedApplication.student_branch }}</p>
+        <p><strong>Graduation Year:</strong> {{ selectedApplication.student_graduation_year }}</p>
         <p><strong>CGPA:</strong> {{ selectedApplication.student_cgpa }}</p>
         <p><strong>Skills:</strong> {{ selectedApplication.student_skills?.join(', ') }}</p>
+        <p><strong>Contact:</strong> {{ selectedApplication.student_contact }}</p>
         <p><strong>Drive:</strong> {{ selectedApplication.drive_name }}</p>
         <p><strong>Job Title:</strong> {{ selectedApplication.job_title }}</p>
         <a
@@ -190,29 +224,56 @@ onMounted(loadDrives)
         >
           View Resume
         </a>
-        <div class="mb-2">
-          <label class="form-label">Status</label>
-          <select
-            class="form-select"
-            :value="selectedApplication.status"
-            @change="setStatus($event.target.value)"
-          >
-            <option value="applied">Applied</option>
-            <option value="shortlisted">Shortlist</option>
-            <option value="waiting">Waiting</option>
-            <option value="selected">Select</option>
-            <option value="rejected">Reject</option>
-          </select>
+
+        <div v-if="isFinalStatus(selectedApplication.status)" class="mb-2">
+          <span class="badge bg-secondary">Final status: {{ selectedApplication.status }}</span>
         </div>
-        <div class="mb-2">
-          <label class="form-label">Interview Date/Time</label>
-          <input
-            type="datetime-local"
-            class="form-control"
-            :value="selectedApplication.interview_datetime"
-            @change="setInterview($event.target.value)"
-          />
-        </div>
+        <template v-else>
+          <div class="mb-2">
+            <label class="form-label">Status</label>
+            <select
+              class="form-select"
+              :value="selectedApplication.status"
+              @change="setStatus($event.target.value)"
+            >
+              <option v-for="s in decisionStatuses" :key="s.value" :value="s.value">
+                {{ s.label }}
+              </option>
+            </select>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Interview Date/Time</label>
+            <input
+              type="datetime-local"
+              class="form-control"
+              :value="selectedApplication.interview_datetime"
+              @change="setInterview($event.target.value)"
+            />
+          </div>
+          <div class="card p-2 mb-2">
+            <label class="form-label">Mark as Placed</label>
+            <input
+              v-model="placementTitle"
+              class="form-control mb-1"
+              placeholder="Position Title"
+            />
+            <input
+              v-model="placementSalary"
+              type="number"
+              class="form-control mb-1"
+              placeholder="Salary"
+            />
+            <input v-model="placementJoiningDate" type="date" class="form-control mb-2" />
+            <button
+              class="btn btn-sm btn-success"
+              :disabled="!placementTitle || !placementJoiningDate"
+              @click="markPlaced"
+            >
+              Confirm Placement
+            </button>
+          </div>
+        </template>
+
         <button class="btn btn-sm btn-secondary" @click="backToApplications">Back</button>
       </template>
     </Modal>

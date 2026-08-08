@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { get, post, postForm } from '../api/http.js'
 import { auth, logout } from '../state/auth.js'
 import Modal from '../components/Modal.vue'
+import { APPLICATION_STATUSES, statusLabel } from '../constants.js'
 
 const router = useRouter()
 
@@ -69,8 +70,10 @@ async function saveProfile() {
 }
 
 async function openOrganization(org) {
-  selectedOrganization.value = await get(`/student/organizations/${org.id}`)
-  organizationDrives.value = await get(`/student/drives?company_id=${org.id}`)
+  ;[selectedOrganization.value, organizationDrives.value] = await Promise.all([
+    get(`/student/organizations/${org.id}`),
+    get(`/student/drives?company_id=${org.id}`),
+  ])
 }
 
 async function openDrive(drive) {
@@ -270,6 +273,7 @@ onMounted(() => {
             <th>Job Title</th>
             <th>Results</th>
             <th>Remark</th>
+            <th>Placement</th>
           </tr>
         </thead>
         <tbody>
@@ -277,8 +281,15 @@ onMounted(() => {
             <td>{{ i + 1 }}</td>
             <td>{{ a.interview_mode || 'Not scheduled' }}</td>
             <td>{{ a.job_title }}</td>
-            <td>{{ a.status }}</td>
+            <td>{{ statusLabel(APPLICATION_STATUSES, a.status) }}</td>
             <td>{{ a.company_remark || 'None' }}</td>
+            <td>
+              <span v-if="a.placement">
+                {{ a.placement.position_title }} · ₹{{ a.placement.salary }} · joining
+                {{ a.placement.joining_date }}
+              </span>
+              <span v-else>—</span>
+            </td>
           </tr>
         </tbody>
       </table>
