@@ -30,6 +30,8 @@ def _user_payload(user):
     if user.role == ROLE_COMPANY:
         payload["approval_status"] = user.company_profile.approval_status
         payload["company_name"] = user.company_profile.company_name
+    elif user.role == ROLE_STUDENT:
+        payload["student_name"] = user.student_profile.name
     return payload
 
 

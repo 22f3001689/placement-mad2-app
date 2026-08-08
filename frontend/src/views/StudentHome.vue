@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { get, post, postForm } from '../api/http.js'
 import { auth, logout } from '../state/auth.js'
 import Modal from '../components/Modal.vue'
-import { APPLICATION_STATUSES, statusLabel } from '../constants.js'
+import { APPLICATION_STATUSES, EXPORT_JOB_STATUSES, statusLabel } from '../constants.js'
 
 const router = useRouter()
 
@@ -119,7 +119,7 @@ onMounted(() => {
 <template>
   <div class="container" style="margin-top: 3rem">
     <div class="d-flex justify-content-between align-items-center mb-3">
-      <h1>Welcome {{ auth.user?.username }}</h1>
+      <h1>Welcome {{ auth.user?.student_name }}</h1>
       <div>
         <button class="btn btn-outline-secondary me-2" @click="openEditProfile">Edit Profile</button>
         <button class="btn btn-outline-secondary me-2" @click="showHistory = true">History</button>
@@ -333,7 +333,7 @@ onMounted(() => {
         <tbody>
           <tr v-for="job in exportJobs" :key="job.id">
             <td>{{ job.created_at }}</td>
-            <td>{{ job.status }}</td>
+            <td>{{ statusLabel(EXPORT_JOB_STATUSES, job.status) }}</td>
             <td>
               <a
                 v-if="job.download_url"

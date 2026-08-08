@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { get, post } from '../api/http.js'
+import { get, post, put } from '../api/http.js'
 import { auth, logout } from '../state/auth.js'
 import Modal from '../components/Modal.vue'
 import {
@@ -9,10 +9,13 @@ import {
   APPLICATION_STATUS_INTERVIEW,
   APPLICATION_STATUS_OFFER,
   APPLICATION_STATUS_PLACED,
+  APPLICATION_STATUS_REJECTED,
   APPLICATION_STATUSES,
+  EXPORT_JOB_STATUSES,
   JOB_POSITION_STATUS_COMPLETED,
   JOB_POSITION_STATUS_ONGOING,
   TERMINAL_APPLICATION_STATUSES,
+  statusLabel,
 } from '../constants.js'
 
 const router = useRouter()
@@ -20,6 +23,7 @@ const router = useRouter()
 const upcomingDrives = ref([])
 const closedDrives = ref([])
 const showCreateDrive = ref(false)
+const editingDriveId = ref(null)
 
 function emptyDrive() {
   return {
@@ -27,11 +31,27 @@ function emptyDrive() {
     title: '',
     description: '',
     eligibility_criteria: '',
+    location: '',
+    salary: '',
     application_deadline: '',
   }
 }
 
 const newDrive = ref(emptyDrive())
+
+function editDrive(drive) {
+  editingDriveId.value = drive.id
+  newDrive.value = {
+    drive_name: drive.drive_name,
+    title: drive.title,
+    description: drive.description || '',
+    eligibility_criteria: drive.eligibility_criteria || '',
+    location: drive.location || '',
+    salary: drive.salary || '',
+    application_deadline: drive.application_deadline?.slice(0, 16) || '',
+  }
+  showCreateDrive.value = true
+}
 
 const currentDrive = ref(null)
 const applicationsForDrive = ref(null) // { drive, applications } or null
@@ -45,6 +65,7 @@ const isFinalStatus = (status) => TERMINAL_APPLICATION_STATUSES.includes(status)
 
 const pendingStatus = ref('')
 const pendingInterviewDatetime = ref('')
+const pendingRemark = ref('')
 const placementJoiningDate = ref('')
 
 const saveMessage = ref('')
@@ -60,11 +81,17 @@ async function loadDrives() {
   ])
 }
 
-async function createDrive() {
-  await post('/company/drives', newDrive.value)
+async function saveDrive() {
+  if (editingDriveId.value) {
+    await put(`/company/drives/${editingDriveId.value}`, newDrive.value)
+  } else {
+    await post('/company/drives', newDrive.value)
+  }
   showCreateDrive.value = false
+  editingDriveId.value = null
   newDrive.value = emptyDrive()
   await loadDrives()
+  flashSaveMessage()
 }
 
 async function completeDrive(drive) {
@@ -86,6 +113,7 @@ async function reviewApplication(application) {
     ? selectedApplication.value.status
     : decisionStatuses[0].value
   pendingInterviewDatetime.value = selectedApplication.value.interview_datetime || ''
+  pendingRemark.value = selectedApplication.value.company_remark || ''
   applicationsForDrive.value = null
 }
 
@@ -101,11 +129,14 @@ async function saveDecision() {
     })
     selectedApplication.value.interview_datetime = pendingInterviewDatetime.value
   }
-  if (pendingStatus.value !== selectedApplication.value.status) {
+  const remarkChanged = pendingRemark.value !== (selectedApplication.value.company_remark || '')
+  if (pendingStatus.value !== selectedApplication.value.status || remarkChanged) {
     await post(`/company/applications/${selectedApplication.value.id}/decision`, {
       status: pendingStatus.value,
+      remark: pendingRemark.value,
     })
     selectedApplication.value.status = pendingStatus.value
+    selectedApplication.value.company_remark = pendingRemark.value
   }
   flashSaveMessage()
 }
@@ -169,6 +200,9 @@ onMounted(loadDrives)
         <button class="btn btn-danger" @click="onLogout">Log out</button>
       </div>
     </div>
+    <Transition name="fade">
+      <div v-if="saveMessage" class="alert alert-success py-1">{{ saveMessage }}</div>
+    </Transition>
 
     <h3>Upcoming Drives</h3>
     <table class="table">
@@ -178,6 +212,7 @@ onMounted(loadDrives)
           <th>Drive Name</th>
           <th></th>
           <th></th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
@@ -185,6 +220,7 @@ onMounted(loadDrives)
           <td>{{ i + 1 }}</td>
           <td>{{ d.drive_name }}</td>
           <td><button class="btn btn-sm btn-outline-primary" @click="openApplications(d)">View Details</button></td>
+          <td><button class="btn btn-sm btn-outline-secondary" @click="editDrive(d)">Edit</button></td>
           <td><button class="btn btn-sm btn-outline-success" @click="completeDrive(d)">Mark as Complete</button></td>
         </tr>
       </tbody>
@@ -197,19 +233,25 @@ onMounted(loadDrives)
           <th>Sr No.</th>
           <th>Drive Name</th>
           <th></th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="(d, i) in closedDrives" :key="d.id">
           <td>{{ i + 1 }}</td>
           <td>{{ d.drive_name }}</td>
-          <td><button class="btn btn-sm btn-outline-primary" @click="openApplications(d)">Update</button></td>
+          <td><button class="btn btn-sm btn-outline-primary" @click="openApplications(d)">View</button></td>
+          <td><button class="btn btn-sm btn-outline-secondary" @click="editDrive(d)">Edit</button></td>
         </tr>
       </tbody>
     </table>
 
-    <Modal :show="showCreateDrive" title="Create a Drive" @close="showCreateDrive = false">
-      <form @submit.prevent="createDrive">
+    <Modal
+      :show="showCreateDrive"
+      :title="editingDriveId ? 'Edit Drive' : 'Create a Drive'"
+      @close="showCreateDrive = false; editingDriveId = null; newDrive = emptyDrive()"
+    >
+      <form @submit.prevent="saveDrive">
         <div class="mb-2">
           <label class="form-label">Drive Name</label>
           <input v-model="newDrive.drive_name" class="form-control" required />
@@ -227,6 +269,14 @@ onMounted(loadDrives)
           <input v-model="newDrive.eligibility_criteria" class="form-control" />
         </div>
         <div class="mb-2">
+          <label class="form-label">Location</label>
+          <input v-model="newDrive.location" class="form-control" required />
+        </div>
+        <div class="mb-2">
+          <label class="form-label">Salary</label>
+          <input v-model="newDrive.salary" type="number" class="form-control" required />
+        </div>
+        <div class="mb-2">
           <label class="form-label">Application Deadline</label>
           <input v-model="newDrive.application_deadline" type="datetime-local" class="form-control" required />
         </div>
@@ -240,8 +290,9 @@ onMounted(loadDrives)
       @close="applicationsForDrive = null; currentDrive = null"
     >
       <template v-if="applicationsForDrive">
-        <div v-for="a in applicationsForDrive" :key="a.id" class="d-flex justify-content-between align-items-center mb-2">
-          <span>{{ a.student_name }}</span>
+        <div v-for="a in applicationsForDrive" :key="a.id" class="d-flex align-items-center mb-2">
+          <span class="flex-grow-1">{{ a.student_name }}</span>
+          <span class="badge bg-secondary text-start me-3" style="width: 6rem">{{ statusLabel(APPLICATION_STATUSES, a.status) }}</span>
           <button class="btn btn-sm btn-outline-primary" @click="reviewApplication(a)">Review Application</button>
         </div>
       </template>
@@ -275,6 +326,9 @@ onMounted(loadDrives)
 
         <div v-if="isFinalStatus(selectedApplication.status)" class="mb-2">
           <span class="badge bg-secondary">Final status: {{ selectedApplication.status }}</span>
+          <p v-if="selectedApplication.company_remark" class="mt-2">
+            <strong>Comments:</strong> {{ selectedApplication.company_remark }}
+          </p>
         </div>
         <template v-else>
           <div class="mb-2">
@@ -292,6 +346,14 @@ onMounted(loadDrives)
               class="form-control"
               v-model="pendingInterviewDatetime"
             />
+          </div>
+          <div v-if="[APPLICATION_STATUS_OFFER, APPLICATION_STATUS_REJECTED].includes(pendingStatus)" class="mb-2">
+            <label class="form-label">Comments</label>
+            <textarea
+              class="form-control"
+              v-model="pendingRemark"
+              placeholder="Why is this candidate being offered/rejected?"
+            ></textarea>
           </div>
           <button class="btn btn-sm btn-primary mb-2" @click="saveDecision">Save</button>
           <Transition name="fade">
@@ -331,7 +393,7 @@ onMounted(loadDrives)
         <tbody>
           <tr v-for="job in exportJobs" :key="job.id">
             <td>{{ job.created_at }}</td>
-            <td>{{ job.status }}</td>
+            <td>{{ statusLabel(EXPORT_JOB_STATUSES, job.status) }}</td>
             <td>
               <a
                 v-if="job.download_url"
@@ -359,7 +421,7 @@ onMounted(loadDrives)
         <tbody>
           <tr v-for="job in reportJobs" :key="job.id">
             <td>{{ job.period_start }} – {{ job.period_end }}</td>
-            <td>{{ job.status }}</td>
+            <td>{{ statusLabel(EXPORT_JOB_STATUSES, job.status) }}</td>
             <td>
               <a
                 v-if="job.download_url"

@@ -92,11 +92,15 @@ def create_drive():
     drive_name = data.get("drive_name")
     title = data.get("title")
     application_deadline = data.get("application_deadline")
+    salary = data.get("salary")
+    location = data.get("location")
 
-    if not all([drive_name, title, application_deadline]):
+    if not all([drive_name, title, application_deadline, salary, location]):
         return (
             jsonify(
-                {"error": "drive_name, title and application_deadline are required"}
+                {
+                    "error": "drive_name, title, location, salary and application_deadline are required"
+                }
             ),
             400,
         )
@@ -129,6 +133,48 @@ def create_drive():
         title,
     )
     return jsonify(_drive_payload(drive)), 201
+
+
+@company_bp.route("/drives/<int:drive_id>", methods=["PUT"])
+@company_approved_required
+def update_drive(drive_id):
+    drive = _own_drive_or_404(drive_id)
+    data = request.get_json(silent=True) or {}
+    drive_name = data.get("drive_name")
+    title = data.get("title")
+    application_deadline = data.get("application_deadline")
+    salary = data.get("salary")
+    location = data.get("location")
+
+    if not all([drive_name, title, application_deadline, salary, location]):
+        return (
+            jsonify(
+                {
+                    "error": "drive_name, title, location, salary and application_deadline are required"
+                }
+            ),
+            400,
+        )
+
+    try:
+        deadline = datetime.fromisoformat(application_deadline)
+    except ValueError:
+        return (
+            jsonify({"error": "application_deadline must be a valid ISO datetime"}),
+            400,
+        )
+
+    drive.drive_name = drive_name
+    drive.title = title
+    drive.description = data.get("description")
+    drive.eligibility_criteria = data.get("eligibility_criteria")
+    drive.salary = salary
+    drive.location = location
+    drive.application_deadline = deadline
+    db.session.commit()
+    invalidate("drives")
+    logger.info("Drive updated: drive_id=%s company_id=%s", drive.id, drive.company_id)
+    return jsonify(_drive_payload(drive)), 200
 
 
 @company_bp.route("/drives", methods=["GET"])

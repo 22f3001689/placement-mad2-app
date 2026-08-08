@@ -35,6 +35,18 @@ export const COMPANY_APPROVAL_STATUSES = [
   { value: COMPANY_APPROVAL_REJECTED, label: 'Rejected' },
 ]
 
+export const EXPORT_JOB_STATUS_PENDING = 'pending'
+export const EXPORT_JOB_STATUS_RUNNING = 'running'
+export const EXPORT_JOB_STATUS_READY = 'ready'
+export const EXPORT_JOB_STATUS_FAILED = 'failed'
+
+export const EXPORT_JOB_STATUSES = [
+  { value: EXPORT_JOB_STATUS_PENDING, label: 'Pending' },
+  { value: EXPORT_JOB_STATUS_RUNNING, label: 'Running' },
+  { value: EXPORT_JOB_STATUS_READY, label: 'Ready' },
+  { value: EXPORT_JOB_STATUS_FAILED, label: 'Failed' },
+]
+
 export function statusLabel(list, value) {
   return list.find((s) => s.value === value)?.label || value
 }
