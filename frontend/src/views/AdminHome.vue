@@ -5,6 +5,14 @@ import { get, post } from '../api/http.js'
 import { logout } from '../state/auth.js'
 import Modal from '../components/Modal.vue'
 import CollapsibleSection from '../components/CollapsibleSection.vue'
+import {
+  APPLICATION_STATUSES,
+  COMPANY_APPROVAL_APPROVED,
+  COMPANY_APPROVAL_PENDING,
+  COMPANY_APPROVAL_REJECTED,
+  JOB_POSITION_STATUS_ONGOING,
+  statusLabel,
+} from '../constants.js'
 
 const router = useRouter()
 
@@ -19,6 +27,11 @@ const applications = ref([])
 
 const selectedDrive = ref(null)
 const selectedApplication = ref(null)
+const selectedStudent = ref(null)
+
+async function viewStudentProfile(student) {
+  selectedStudent.value = await get(`/admin/students/${student.id}`)
+}
 
 async function loadTotals() {
   totals.value = await get('/admin/dashboard')
@@ -26,7 +39,9 @@ async function loadTotals() {
 
 async function loadRegisteredCompanies() {
   const query = q.value ? `&q=${encodeURIComponent(q.value)}` : ''
-  registeredCompanies.value = await get(`/admin/companies?status=approved${query}`)
+  registeredCompanies.value = await get(
+    `/admin/companies?status=${COMPANY_APPROVAL_APPROVED}${query}`
+  )
 }
 
 async function loadRegisteredStudents() {
@@ -35,11 +50,15 @@ async function loadRegisteredStudents() {
 }
 
 async function loadPendingCompanies() {
-  pendingCompanies.value = await get('/admin/companies?status=pending')
+  pendingCompanies.value = await get(
+    `/admin/companies?status=${COMPANY_APPROVAL_PENDING}`
+  )
 }
 
 async function loadOngoingDrives() {
-  ongoingDrives.value = await get('/admin/job-positions?status=ongoing')
+  ongoingDrives.value = await get(
+    `/admin/job-positions?status=${JOB_POSITION_STATUS_ONGOING}`
+  )
 }
 
 async function loadApplications() {
@@ -149,6 +168,12 @@ onMounted(() => {
             <td>{{ s.name }}</td>
             <td class="text-end">
               <button
+                class="btn btn-sm btn-outline-primary me-1"
+                @click="viewStudentProfile(s)"
+              >
+                View Profile
+              </button>
+              <button
                 class="btn btn-sm"
                 :class="s.is_active ? 'btn-danger' : 'btn-success'"
                 @click="toggleActive(s)"
@@ -167,10 +192,16 @@ onMounted(() => {
           <tr v-for="c in pendingCompanies" :key="c.id">
             <td>{{ c.company_name }}</td>
             <td class="text-end">
-              <button class="btn btn-sm btn-success me-1" @click="decideCompany(c, 'approved')">
+              <button
+                class="btn btn-sm btn-success me-1"
+                @click="decideCompany(c, COMPANY_APPROVAL_APPROVED)"
+              >
                 Approve
               </button>
-              <button class="btn btn-sm btn-outline-danger" @click="decideCompany(c, 'rejected')">
+              <button
+                class="btn btn-sm btn-outline-danger"
+                @click="decideCompany(c, COMPANY_APPROVAL_REJECTED)"
+              >
                 Reject
               </button>
             </td>
@@ -270,6 +301,56 @@ onMounted(() => {
         >
           View Resume
         </a>
+      </template>
+    </Modal>
+
+    <Modal :show="!!selectedStudent" title="Student Profile" @close="selectedStudent = null">
+      <template v-if="selectedStudent">
+        <img
+          v-if="selectedStudent.photo_url"
+          :src="selectedStudent.photo_url"
+          alt="Student photo"
+          style="max-height: 4rem"
+          class="mb-2"
+        />
+        <p><strong>Name:</strong> {{ selectedStudent.name }}</p>
+        <p><strong>Branch:</strong> {{ selectedStudent.branch?.name }}</p>
+        <p><strong>Graduation Year:</strong> {{ selectedStudent.graduation_year }}</p>
+        <p><strong>CGPA:</strong> {{ selectedStudent.cgpa }}</p>
+        <p><strong>Skills:</strong> {{ selectedStudent.skills.map((s) => s.name).join(', ') }}</p>
+        <p><strong>Contact:</strong> {{ selectedStudent.contact }}</p>
+        <a
+          v-if="selectedStudent.resume_url"
+          :href="selectedStudent.resume_url"
+          download
+          class="btn btn-sm btn-outline-primary mb-2"
+        >
+          View Resume
+        </a>
+        <h5>Application History</h5>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Job Title</th>
+              <th>Company</th>
+              <th>Status</th>
+              <th>Date</th>
+              <th>Placement</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="a in selectedStudent.applications" :key="a.id">
+              <td>{{ a.job_title }}</td>
+              <td>{{ a.company_name }}</td>
+              <td>{{ statusLabel(APPLICATION_STATUSES, a.status) }}</td>
+              <td>{{ a.application_date }}</td>
+              <td>
+                <span v-if="a.placement">{{ a.placement.position_title }}</span>
+                <span v-else>—</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </template>
     </Modal>
   </div>

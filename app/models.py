@@ -4,6 +4,11 @@ from flask_login import UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from app import db, login
+from app.constants import (
+    APPLICATION_STATUS_APPLIED,
+    COMPANY_APPROVAL_PENDING,
+    JOB_POSITION_STATUS_ONGOING,
+)
 
 
 class User(UserMixin, db.Model):
@@ -37,15 +42,47 @@ class Company(db.Model):
     hr_contact = db.Column(db.String(100), nullable=True)
     website = db.Column(db.String(255), nullable=True)
     logo_path = db.Column(db.String(255), nullable=True)
-    approval_status = db.Column(db.String(20), nullable=False, default="pending")
+    overview = db.Column(db.Text, nullable=True)
+    approval_status = db.Column(
+        db.String(20), nullable=False, default=COMPANY_APPROVAL_PENDING
+    )
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    user = db.relationship(
-        "User", backref=db.backref("company_profile", uselist=False)
-    )
+    user = db.relationship("User", backref=db.backref("company_profile", uselist=False))
 
     def __repr__(self):
         return f"<Company {self.company_name}>"
+
+
+class Branch(db.Model):
+    """Master list of Student branches (e.g. CSE, ME) - fixed set, not self-service."""
+
+    __tablename__ = "branch"
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(10), unique=True, nullable=False)
+    name = db.Column(db.String(150), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+
+    def __repr__(self):
+        return f"<Branch {self.code}>"
+
+
+class Skill(db.Model):
+    """Master list of Skills a Student can pick from - fixed set, not self-service."""
+
+    __tablename__ = "skill"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+
+    def __repr__(self):
+        return f"<Skill {self.name}>"
+
+
+student_skill = db.Table(
+    "student_skill",
+    db.Column("student_id", db.Integer, db.ForeignKey("student.id"), primary_key=True),
+    db.Column("skill_id", db.Integer, db.ForeignKey("skill.id"), primary_key=True),
+)
 
 
 class Student(db.Model):
@@ -55,18 +92,17 @@ class Student(db.Model):
         db.Integer, db.ForeignKey("users.id"), unique=True, nullable=False
     )
     name = db.Column(db.String(100), nullable=False)
-    branch = db.Column(db.String(100), nullable=True)
+    branch_id = db.Column(db.Integer, db.ForeignKey("branch.id"), nullable=True)
     graduation_year = db.Column(db.Integer, nullable=True)
     cgpa = db.Column(db.Float, nullable=True)
-    skills = db.Column(db.Text, nullable=True)
     resume_path = db.Column(db.String(255), nullable=True)
     photo_path = db.Column(db.String(255), nullable=True)
     contact = db.Column(db.String(100), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    user = db.relationship(
-        "User", backref=db.backref("student_profile", uselist=False)
-    )
+    user = db.relationship("User", backref=db.backref("student_profile", uselist=False))
+    branch = db.relationship("Branch")
+    skills = db.relationship("Skill", secondary=student_skill, backref="students")
 
     def __repr__(self):
         return f"<Student {self.name}>"
@@ -86,7 +122,9 @@ class JobPosition(db.Model):
     location = db.Column(db.String(150), nullable=True)
     skills_required = db.Column(db.Text, nullable=True)
     application_deadline = db.Column(db.DateTime, nullable=False)
-    status = db.Column(db.String(20), nullable=False, default="ongoing")
+    status = db.Column(
+        db.String(20), nullable=False, default=JOB_POSITION_STATUS_ONGOING
+    )
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     company = db.relationship(
@@ -108,8 +146,12 @@ class Application(db.Model):
         db.Integer, db.ForeignKey("job_position.id"), nullable=False
     )
     application_date = db.Column(db.DateTime, default=datetime.utcnow)
-    status = db.Column(db.String(20), nullable=False, default="applied")
+    status = db.Column(
+        db.String(20), nullable=False, default=APPLICATION_STATUS_APPLIED
+    )
     interview_datetime = db.Column(db.DateTime, nullable=True)
+    interview_mode = db.Column(db.String(20), nullable=True)
+    company_remark = db.Column(db.Text, nullable=True)
 
     student = db.relationship(
         "Student",

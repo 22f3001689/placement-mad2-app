@@ -70,3 +70,6 @@ htmlcov/
 *.pdf
 # Except the seeded demo resume placeholder, needed for a fresh clone to demo end-to-end
 !app/static/uploads/resumes/john_doe.pdf
+
+# Personal working notes, not part of the submission
+VIVA_PREP.md
