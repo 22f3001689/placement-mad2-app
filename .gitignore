@@ -73,5 +73,11 @@ app/static/reports/
 # Except the seeded demo resume placeholder, needed for a fresh clone to demo end-to-end
 !app/static/uploads/resumes/john_doe.pdf
 
+# Seed script auto-generates a placeholder avatar per student (see
+# data-seeds/seed_data.py's _write_solid_png) - not source, don't commit.
+# john_doe.png is the one hand-picked exception, kept for a fresh-clone demo.
+app/static/uploads/photos/*
+!app/static/uploads/photos/john_doe.png
+
 # Personal working notes, not part of the submission
 VIVA_PREP.md
