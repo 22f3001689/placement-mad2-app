@@ -3,6 +3,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import contains_eager, joinedload
 
 from app import db
+from app.cache import cached_response, invalidate
 from app.constants import (
     COMPANY_APPROVAL_APPROVED,
     COMPANY_DECISION_STATUSES,
@@ -138,6 +139,7 @@ def dashboard():
 
 @admin_bp.route("/companies", methods=["GET"])
 @role_required(ROLE_ADMIN)
+@cached_response("admin_companies")
 def list_companies():
     query = Company.query.options(joinedload(Company.user))
 
@@ -168,6 +170,9 @@ def decide_company(company_id):
 
     company.approval_status = status
     db.session.commit()
+    invalidate("admin_companies")
+    invalidate("orgs")
+    invalidate("drives")
     logger.info(
         "Company approval decision: company_id=%s status=%s", company.id, status
     )
@@ -176,6 +181,7 @@ def decide_company(company_id):
 
 @admin_bp.route("/students", methods=["GET"])
 @role_required(ROLE_ADMIN)
+@cached_response("admin_students")
 def list_students():
     query = Student.query.join(User, Student.user_id == User.id).options(
         contains_eager(Student.user)
@@ -250,6 +256,8 @@ def toggle_active(user_id):
 
     user.is_active = not user.is_active
     db.session.commit()
+    invalidate("admin_companies")
+    invalidate("admin_students")
     logger.info(
         "User active-status toggled: user_id=%s role=%s is_active=%s",
         user.id,

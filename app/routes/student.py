@@ -7,6 +7,7 @@ from sqlalchemy.orm import joinedload
 from werkzeug.utils import secure_filename
 
 from app import db
+from app.cache import cached_response, invalidate
 from app.constants import (
     COMPANY_APPROVAL_APPROVED,
     EXPORT_JOB_TYPE_CSV_EXPORT,
@@ -191,12 +192,14 @@ def update_profile():
         )
 
     db.session.commit()
+    invalidate("admin_students")
     logger.info("Profile updated: student_id=%s", student.id)
     return jsonify(_profile_payload(student)), 200
 
 
 @student_bp.route("/organizations", methods=["GET"])
 @role_required(ROLE_STUDENT)
+@cached_response("orgs")
 def list_organizations():
     query = Company.query.filter_by(approval_status=COMPANY_APPROVAL_APPROVED)
 
@@ -221,6 +224,7 @@ def get_organization(company_id):
 
 @student_bp.route("/drives", methods=["GET"])
 @role_required(ROLE_STUDENT)
+@cached_response("drives")
 def list_drives():
     query = (
         JobPosition.query.join(Company, JobPosition.company_id == Company.id)
