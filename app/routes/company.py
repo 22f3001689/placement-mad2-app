@@ -1,16 +1,21 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from flask import Blueprint, abort, jsonify, request
 from flask_login import current_user
 
 from app import db
+from app.constants import (
+    APPLICATION_STATUSES,
+    JOB_POSITION_STATUSES,
+    TERMINAL_APPLICATION_STATUSES,
+)
 from app.decorators import company_approved_required
-from app.models import Application, JobPosition
+from app.models import Application, JobPosition, Placement
 from app.utils import static_url
 
 company_bp = Blueprint("company", __name__, url_prefix="/api/company")
 
-APPLICATION_DECISION_STATUSES = ("shortlisted", "waiting", "selected", "rejected")
+APPLICATION_DECISION_STATUSES = tuple(s for s in APPLICATION_STATUSES if s != "applied")
 
 
 def _own_drive_or_404(drive_id):
@@ -62,6 +67,8 @@ def _application_detail_payload(application):
         "student_branch": student.branch.name if student.branch else None,
         "student_cgpa": student.cgpa,
         "student_skills": [s.name for s in student.skills],
+        "student_graduation_year": student.graduation_year,
+        "student_contact": student.contact,
         "student_photo_url": static_url(student.photo_path),
         "student_resume_url": static_url(student.resume_path),
         "drive_name": drive.drive_name,
@@ -132,7 +139,7 @@ def list_drives():
 @company_approved_required
 def complete_drive(drive_id):
     drive = _own_drive_or_404(drive_id)
-    drive.status = "completed"
+    drive.status = JOB_POSITION_STATUSES[1]
     db.session.commit()
     return jsonify({"id": drive.id, "status": drive.status}), 200
 
@@ -169,13 +176,45 @@ def decide_application(application_id):
         return (
             jsonify(
                 {
-                    "error": "status must be one of shortlisted, waiting, selected, rejected"
+                    "error": "status must be one of "
+                    + ", ".join(APPLICATION_DECISION_STATUSES)
                 }
             ),
             400,
         )
 
     application = _own_application_or_404(application_id)
+    if application.status in TERMINAL_APPLICATION_STATUSES:
+        return jsonify({"error": "This application's outcome is final"}), 409
+
+    placement = None
+    if status == "placed":
+        position_title = data.get("position_title")
+        joining_date = data.get("joining_date")
+        if not position_title or not joining_date:
+            return (
+                jsonify(
+                    {
+                        "error": "position_title and joining_date are required to mark Placed"
+                    }
+                ),
+                400,
+            )
+        try:
+            joining_date = date.fromisoformat(joining_date)
+        except ValueError:
+            return jsonify({"error": "joining_date must be a valid ISO date"}), 400
+
+        placement = Placement(
+            student_id=application.student_id,
+            company_id=application.job_position.company_id,
+            application_id=application.id,
+            position_title=position_title,
+            salary=data.get("salary"),
+            joining_date=joining_date,
+        )
+        db.session.add(placement)
+
     application.status = status
     remark = data.get("remark")
     if remark is not None:

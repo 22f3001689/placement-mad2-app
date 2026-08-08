@@ -96,6 +96,21 @@ def _drive_detail_payload(drive):
     }
 
 
+def _placement_payload(application):
+    if application.status != "placed":
+        return None
+    placement = Placement.query.filter_by(application_id=application.id).first()
+    if placement is None:
+        return None
+    return {
+        "position_title": placement.position_title,
+        "salary": placement.salary,
+        "joining_date": (
+            placement.joining_date.isoformat() if placement.joining_date else None
+        ),
+    }
+
+
 def _application_payload(application):
     return {
         "id": application.id,
@@ -112,6 +127,7 @@ def _application_payload(application):
         "interview_mode": application.interview_mode,
         "company_remark": application.company_remark,
         "application_date": application.application_date.isoformat(),
+        "placement": _placement_payload(application),
     }
 
 
@@ -190,9 +206,11 @@ def get_organization(company_id):
 @student_bp.route("/drives", methods=["GET"])
 @role_required("student")
 def list_drives():
-    query = JobPosition.query.join(
-        Company, JobPosition.company_id == Company.id
-    ).filter(JobPosition.status == "ongoing")
+    query = (
+        JobPosition.query.join(Company, JobPosition.company_id == Company.id)
+        .filter(JobPosition.status == "ongoing")
+        .filter(Company.approval_status == "approved")
+    )
 
     company_id = request.args.get("company_id")
     if company_id:
@@ -216,7 +234,7 @@ def list_drives():
 @role_required("student")
 def get_drive(drive_id):
     drive = JobPosition.query.get(drive_id)
-    if drive is None:
+    if drive is None or drive.company.approval_status != "approved":
         return jsonify({"error": "Drive not found"}), 404
 
     return jsonify(_drive_detail_payload(drive)), 200
@@ -226,7 +244,7 @@ def get_drive(drive_id):
 @role_required("student")
 def apply_to_drive(drive_id):
     drive = JobPosition.query.get(drive_id)
-    if drive is None:
+    if drive is None or drive.company.approval_status != "approved":
         return jsonify({"error": "Drive not found"}), 404
 
     if drive.status == "completed":

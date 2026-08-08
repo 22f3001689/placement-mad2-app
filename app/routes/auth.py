@@ -11,9 +11,20 @@ auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 def list_branches():
     """Public - needed on the registration form, before any session exists."""
     branches = Branch.query.all()
-    return jsonify(
-        [{"id": b.id, "code": b.code, "name": b.name, "description": b.description} for b in branches]
-    ), 200
+    return (
+        jsonify(
+            [
+                {
+                    "id": b.id,
+                    "code": b.code,
+                    "name": b.name,
+                    "description": b.description,
+                }
+                for b in branches
+            ]
+        ),
+        200,
+    )
 
 
 @auth_bp.route("/skills", methods=["GET"])

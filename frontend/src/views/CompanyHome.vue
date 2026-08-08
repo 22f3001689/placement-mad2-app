@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { get, post } from '../api/http.js'
 import { auth, logout } from '../state/auth.js'
 import Modal from '../components/Modal.vue'
+import { APPLICATION_STATUSES, JOB_POSITION_STATUSES } from '../constants.js'
 
 const router = useRouter()
 
@@ -22,9 +23,18 @@ const currentDrive = ref(null)
 const applicationsForDrive = ref(null) // { drive, applications } or null
 const selectedApplication = ref(null)
 
+const decisionStatuses = APPLICATION_STATUSES.filter(
+  (s) => !['applied', 'placed'].includes(s.value)
+)
+const isFinalStatus = (status) => ['placed', 'rejected'].includes(status)
+
+const placementTitle = ref('')
+const placementSalary = ref('')
+const placementJoiningDate = ref('')
+
 async function loadDrives() {
-  upcomingDrives.value = await get('/company/drives?status=ongoing')
-  closedDrives.value = await get('/company/drives?status=completed')
+  upcomingDrives.value = await get(`/company/drives?status=${JOB_POSITION_STATUSES[0].value}`)
+  closedDrives.value = await get(`/company/drives?status=${JOB_POSITION_STATUSES[1].value}`)
 }
 
 async function createDrive() {
@@ -63,6 +73,19 @@ async function backToApplications() {
 async function setStatus(status) {
   await post(`/company/applications/${selectedApplication.value.id}/decision`, { status })
   selectedApplication.value.status = status
+}
+
+async function markPlaced() {
+  await post(`/company/applications/${selectedApplication.value.id}/decision`, {
+    status: 'placed',
+    position_title: placementTitle.value,
+    salary: placementSalary.value || null,
+    joining_date: placementJoiningDate.value,
+  })
+  selectedApplication.value.status = 'placed'
+  placementTitle.value = ''
+  placementSalary.value = ''
+  placementJoiningDate.value = ''
 }
 
 async function setInterview(interviewDatetime) {
@@ -178,8 +201,10 @@ onMounted(loadDrives)
         />
         <p><strong>Student Name:</strong> {{ selectedApplication.student_name }}</p>
         <p><strong>Department:</strong> {{ selectedApplication.student_branch }}</p>
+        <p><strong>Graduation Year:</strong> {{ selectedApplication.student_graduation_year }}</p>
         <p><strong>CGPA:</strong> {{ selectedApplication.student_cgpa }}</p>
         <p><strong>Skills:</strong> {{ selectedApplication.student_skills?.join(', ') }}</p>
+        <p><strong>Contact:</strong> {{ selectedApplication.student_contact }}</p>
         <p><strong>Drive:</strong> {{ selectedApplication.drive_name }}</p>
         <p><strong>Job Title:</strong> {{ selectedApplication.job_title }}</p>
         <a
@@ -190,29 +215,56 @@ onMounted(loadDrives)
         >
           View Resume
         </a>
-        <div class="mb-2">
-          <label class="form-label">Status</label>
-          <select
-            class="form-select"
-            :value="selectedApplication.status"
-            @change="setStatus($event.target.value)"
-          >
-            <option value="applied">Applied</option>
-            <option value="shortlisted">Shortlist</option>
-            <option value="waiting">Waiting</option>
-            <option value="selected">Select</option>
-            <option value="rejected">Reject</option>
-          </select>
+
+        <div v-if="isFinalStatus(selectedApplication.status)" class="mb-2">
+          <span class="badge bg-secondary">Final status: {{ selectedApplication.status }}</span>
         </div>
-        <div class="mb-2">
-          <label class="form-label">Interview Date/Time</label>
-          <input
-            type="datetime-local"
-            class="form-control"
-            :value="selectedApplication.interview_datetime"
-            @change="setInterview($event.target.value)"
-          />
-        </div>
+        <template v-else>
+          <div class="mb-2">
+            <label class="form-label">Status</label>
+            <select
+              class="form-select"
+              :value="selectedApplication.status"
+              @change="setStatus($event.target.value)"
+            >
+              <option v-for="s in decisionStatuses" :key="s.value" :value="s.value">
+                {{ s.label }}
+              </option>
+            </select>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Interview Date/Time</label>
+            <input
+              type="datetime-local"
+              class="form-control"
+              :value="selectedApplication.interview_datetime"
+              @change="setInterview($event.target.value)"
+            />
+          </div>
+          <div class="card p-2 mb-2">
+            <label class="form-label">Mark as Placed</label>
+            <input
+              v-model="placementTitle"
+              class="form-control mb-1"
+              placeholder="Position Title"
+            />
+            <input
+              v-model="placementSalary"
+              type="number"
+              class="form-control mb-1"
+              placeholder="Salary"
+            />
+            <input v-model="placementJoiningDate" type="date" class="form-control mb-2" />
+            <button
+              class="btn btn-sm btn-success"
+              :disabled="!placementTitle || !placementJoiningDate"
+              @click="markPlaced"
+            >
+              Confirm Placement
+            </button>
+          </div>
+        </template>
+
         <button class="btn btn-sm btn-secondary" @click="backToApplications">Back</button>
       </template>
     </Modal>
