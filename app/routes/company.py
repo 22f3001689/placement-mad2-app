@@ -12,9 +12,11 @@ from app.constants import (
 )
 from app.decorators import company_approved_required
 from app.models import Application, JobPosition, Placement
-from app.utils import static_url
+from app.utils import get_logger, static_url
 
 company_bp = Blueprint("company", __name__, url_prefix="/api/company")
+
+logger = get_logger(__name__)
 
 
 def _own_drive_or_404(drive_id):
@@ -119,6 +121,12 @@ def create_drive():
     )
     db.session.add(drive)
     db.session.commit()
+    logger.info(
+        "Drive created: drive_id=%s company_id=%s title=%s",
+        drive.id,
+        drive.company_id,
+        title,
+    )
     return jsonify(_drive_payload(drive)), 201
 
 
@@ -140,6 +148,7 @@ def complete_drive(drive_id):
     drive = _own_drive_or_404(drive_id)
     drive.status = JOB_POSITION_STATUS_COMPLETED
     db.session.commit()
+    logger.info("Drive closed: drive_id=%s company_id=%s", drive.id, drive.company_id)
     return jsonify({"id": drive.id, "status": drive.status}), 200
 
 
@@ -184,7 +193,15 @@ def decide_application(application_id):
 
     application = _own_application_or_404(application_id)
     if application.status in TERMINAL_APPLICATION_STATUSES:
+        logger.warning(
+            "Decision rejected (final outcome): application_id=%s current_status=%s attempted_status=%s",
+            application.id,
+            application.status,
+            status,
+        )
         return jsonify({"error": "This application's outcome is final"}), 409
+
+    previous_status = application.status
 
     if status == APPLICATION_STATUS_PLACED:
         position_title = data.get("position_title")
@@ -212,12 +229,25 @@ def decide_application(application_id):
             joining_date=joining_date,
         )
         db.session.add(placement)
+        logger.info(
+            "Placement created: application_id=%s student_id=%s company_id=%s position_title=%s",
+            application.id,
+            application.student_id,
+            application.job_position.company_id,
+            position_title,
+        )
 
     application.status = status
     remark = data.get("remark")
     if remark is not None:
         application.company_remark = remark
     db.session.commit()
+    logger.info(
+        "Application status changed: application_id=%s %s -> %s",
+        application.id,
+        previous_status,
+        status,
+    )
 
     payload = {"id": application.id, "status": application.status}
     if remark is not None:
@@ -247,6 +277,12 @@ def schedule_interview(application_id):
     if mode is not None:
         application.interview_mode = mode
     db.session.commit()
+    logger.info(
+        "Interview scheduled: application_id=%s interview_datetime=%s mode=%s",
+        application.id,
+        application.interview_datetime.isoformat(),
+        mode,
+    )
 
     payload = {
         "id": application.id,

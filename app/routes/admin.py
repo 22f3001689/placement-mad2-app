@@ -9,9 +9,16 @@ from app.constants import (
 )
 from app.decorators import role_required
 from app.models import Application, Company, JobPosition, Student, User
-from app.utils import branch_payload, placement_payloads_by_application_id, static_url
+from app.utils import (
+    branch_payload,
+    get_logger,
+    placement_payloads_by_application_id,
+    static_url,
+)
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/api/admin")
+
+logger = get_logger(__name__)
 
 
 def _company_payload(company):
@@ -162,6 +169,9 @@ def decide_company(company_id):
 
     company.approval_status = status
     db.session.commit()
+    logger.info(
+        "Company approval decision: company_id=%s status=%s", company.id, status
+    )
     return jsonify({"id": company.id, "approval_status": company.approval_status}), 200
 
 
@@ -214,6 +224,7 @@ def complete_job_position(job_position_id):
 
     job_position.status = JOB_POSITION_STATUS_COMPLETED
     db.session.commit()
+    logger.info("Job Position closed by Admin: job_position_id=%s", job_position.id)
     return jsonify({"id": job_position.id, "status": job_position.status}), 200
 
 
@@ -235,4 +246,10 @@ def toggle_active(user_id):
 
     user.is_active = not user.is_active
     db.session.commit()
+    logger.info(
+        "User active-status toggled: user_id=%s role=%s is_active=%s",
+        user.id,
+        user.role,
+        user.is_active,
+    )
     return jsonify({"id": user.id, "is_active": user.is_active}), 200

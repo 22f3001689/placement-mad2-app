@@ -13,9 +13,16 @@ from app.constants import (
 )
 from app.decorators import role_required
 from app.models import Application, Branch, Company, JobPosition, Placement, Skill
-from app.utils import branch_payload, placement_payloads_by_application_id, static_url
+from app.utils import (
+    branch_payload,
+    get_logger,
+    placement_payloads_by_application_id,
+    static_url,
+)
 
 student_bp = Blueprint("student", __name__, url_prefix="/api/student")
+
+logger = get_logger(__name__)
 
 PHOTOS_DIR = "uploads/photos"
 RESUMES_DIR = "uploads/resumes"
@@ -161,12 +168,21 @@ def update_profile():
     photo = request.files.get("photo")
     if photo and photo.filename:
         student.photo_path = _save_upload(photo, PHOTOS_DIR)
+        logger.info(
+            "Profile photo uploaded: student_id=%s path=%s",
+            student.id,
+            student.photo_path,
+        )
 
     resume = request.files.get("resume")
     if resume and resume.filename:
         student.resume_path = _save_upload(resume, RESUMES_DIR)
+        logger.info(
+            "Resume uploaded: student_id=%s path=%s", student.id, student.resume_path
+        )
 
     db.session.commit()
+    logger.info("Profile updated: student_id=%s", student.id)
     return jsonify(_profile_payload(student)), 200
 
 
@@ -251,6 +267,12 @@ def apply_to_drive(drive_id):
     application = Application(student_id=student_id, job_position_id=drive_id)
     db.session.add(application)
     db.session.commit()
+    logger.info(
+        "Application submitted: application_id=%s student_id=%s job_position_id=%s",
+        application.id,
+        student_id,
+        drive_id,
+    )
     return jsonify({"id": application.id, "status": application.status}), 201
 
 

@@ -3,6 +3,10 @@ from functools import wraps
 from flask import abort, jsonify
 from flask_login import current_user, login_required
 
+from app.utils import get_logger
+
+logger = get_logger(__name__)
+
 
 def role_required(*roles):
     """Require an active login AND one of the given roles, in that order.
@@ -16,6 +20,13 @@ def role_required(*roles):
         @login_required
         def wrapped(*args, **kwargs):
             if current_user.role not in roles:
+                logger.warning(
+                    "Access denied: user_id=%s role=%s attempted %s (requires %s)",
+                    current_user.id,
+                    current_user.role,
+                    view.__name__,
+                    roles,
+                )
                 abort(403)
             return view(*args, **kwargs)
 
@@ -36,6 +47,12 @@ def company_approved_required(view):
     @role_required("company")
     def wrapped(*args, **kwargs):
         if current_user.company_profile.approval_status != "approved":
+            logger.warning(
+                "Access denied: company_id=%s (user_id=%s) not approved, attempted %s",
+                current_user.company_profile.id,
+                current_user.id,
+                view.__name__,
+            )
             return jsonify({"error": "Company is not yet approved"}), 403
         return view(*args, **kwargs)
 

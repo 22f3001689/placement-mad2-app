@@ -1,7 +1,24 @@
+import logging
+
 from flask import url_for
 
 from app.constants import APPLICATION_STATUS_PLACED
 from app.models import Placement
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(name)s.%(funcName)s] %(message)s",
+)
+
+
+def get_logger(name):
+    """Returns a logger scoped to the caller's module.
+
+    Call as `get_logger(__name__)` at the top of a file - the configured
+    format then stamps every line with that module (i.e. the file) and the
+    function it was logged from, e.g. "app.routes.company.decide_application".
+    """
+    return logging.getLogger(name)
 
 
 def static_url(path):
