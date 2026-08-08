@@ -26,6 +26,11 @@ def static_url(path):
     return url_for("static", filename=path) if path else None
 
 
+def iso_or_none(value):
+    """ISO-formats a date/datetime, or None if it's falsy."""
+    return value.isoformat() if value else None
+
+
 def branch_payload(branch):
     return {
         "id": branch.id,
@@ -50,7 +55,7 @@ def placement_payloads_by_application_id(applications):
         p.application_id: {
             "position_title": p.position_title,
             "salary": p.salary,
-            "joining_date": p.joining_date.isoformat() if p.joining_date else None,
+            "joining_date": iso_or_none(p.joining_date),
         }
         for p in placements
     }

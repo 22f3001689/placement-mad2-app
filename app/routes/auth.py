@@ -2,8 +2,9 @@ from flask import Blueprint, jsonify, request
 from flask_login import current_user, login_required, login_user, logout_user
 
 from app import db
+from app.constants import ROLE_COMPANY, ROLE_STUDENT
 from app.models import Branch, Company, Skill, Student, User
-from app.utils import get_logger
+from app.utils import branch_payload, get_logger
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
@@ -14,20 +15,7 @@ logger = get_logger(__name__)
 def list_branches():
     """Public - needed on the registration form, before any session exists."""
     branches = Branch.query.all()
-    return (
-        jsonify(
-            [
-                {
-                    "id": b.id,
-                    "code": b.code,
-                    "name": b.name,
-                    "description": b.description,
-                }
-                for b in branches
-            ]
-        ),
-        200,
-    )
+    return jsonify([branch_payload(b) for b in branches]), 200
 
 
 @auth_bp.route("/skills", methods=["GET"])
@@ -39,10 +27,22 @@ def list_skills():
 
 def _user_payload(user):
     payload = {"username": user.username, "role": user.role}
-    if user.role == "company":
+    if user.role == ROLE_COMPANY:
         payload["approval_status"] = user.company_profile.approval_status
         payload["company_name"] = user.company_profile.company_name
     return payload
+
+
+def _username_taken_or_weak_password_error(username, password):
+    """The two username/password checks shared verbatim by both registration routes.
+
+    Returns (error_message, status_code), or (None, None) if both pass.
+    """
+    if len(password) < 6:
+        return "Password must be at least 6 characters long", 400
+    if User.query.filter_by(username=username).first():
+        return "Username already exists", 409
+    return None, None
 
 
 @auth_bp.route("/register/student", methods=["POST"])
@@ -55,14 +55,13 @@ def register_student():
 
     if not all([username, password, name]):
         return jsonify({"error": "username, password and name are required"}), 400
-    if len(password) < 6:
-        return jsonify({"error": "Password must be at least 6 characters long"}), 400
-    if User.query.filter_by(username=username).first():
-        return jsonify({"error": "Username already exists"}), 409
+    error, status = _username_taken_or_weak_password_error(username, password)
+    if error:
+        return jsonify({"error": error}), status
     if branch_id is not None and Branch.query.get(branch_id) is None:
         return jsonify({"error": "branch_id must be a valid Branch"}), 400
 
-    user = User(username=username, role="student")
+    user = User(username=username, role=ROLE_STUDENT)
     user.set_password(password)
     db.session.add(user)
     db.session.flush()
@@ -87,12 +86,11 @@ def register_company():
             jsonify({"error": "username, password and company_name are required"}),
             400,
         )
-    if len(password) < 6:
-        return jsonify({"error": "Password must be at least 6 characters long"}), 400
-    if User.query.filter_by(username=username).first():
-        return jsonify({"error": "Username already exists"}), 409
+    error, status = _username_taken_or_weak_password_error(username, password)
+    if error:
+        return jsonify({"error": error}), status
 
-    user = User(username=username, role="company")
+    user = User(username=username, role=ROLE_COMPANY)
     user.set_password(password)
     db.session.add(user)
     db.session.flush()

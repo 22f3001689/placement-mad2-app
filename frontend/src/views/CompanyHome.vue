@@ -5,8 +5,11 @@ import { get, post } from '../api/http.js'
 import { auth, logout } from '../state/auth.js'
 import Modal from '../components/Modal.vue'
 import {
+  APPLICATION_STATUS_APPLIED,
+  APPLICATION_STATUS_PLACED,
   APPLICATION_STATUSES,
-  JOB_POSITION_STATUSES,
+  JOB_POSITION_STATUS_COMPLETED,
+  JOB_POSITION_STATUS_ONGOING,
   TERMINAL_APPLICATION_STATUSES,
 } from '../constants.js'
 
@@ -15,20 +18,26 @@ const router = useRouter()
 const upcomingDrives = ref([])
 const closedDrives = ref([])
 const showCreateDrive = ref(false)
-const newDrive = ref({
-  drive_name: '',
-  title: '',
-  description: '',
-  eligibility_criteria: '',
-  application_deadline: '',
-})
+
+function emptyDrive() {
+  return {
+    drive_name: '',
+    title: '',
+    description: '',
+    eligibility_criteria: '',
+    application_deadline: '',
+  }
+}
+
+const newDrive = ref(emptyDrive())
 
 const currentDrive = ref(null)
 const applicationsForDrive = ref(null) // { drive, applications } or null
 const selectedApplication = ref(null)
 
+// "Placed" is set via the separate Mark-as-Placed form below, not this dropdown.
 const decisionStatuses = APPLICATION_STATUSES.filter(
-  (s) => !['applied', 'placed'].includes(s.value)
+  (s) => ![APPLICATION_STATUS_APPLIED, APPLICATION_STATUS_PLACED].includes(s.value)
 )
 const isFinalStatus = (status) => TERMINAL_APPLICATION_STATUSES.includes(status)
 
@@ -37,20 +46,16 @@ const placementSalary = ref('')
 const placementJoiningDate = ref('')
 
 async function loadDrives() {
-  upcomingDrives.value = await get(`/company/drives?status=${JOB_POSITION_STATUSES[0].value}`)
-  closedDrives.value = await get(`/company/drives?status=${JOB_POSITION_STATUSES[1].value}`)
+  ;[upcomingDrives.value, closedDrives.value] = await Promise.all([
+    get(`/company/drives?status=${JOB_POSITION_STATUS_ONGOING}`),
+    get(`/company/drives?status=${JOB_POSITION_STATUS_COMPLETED}`),
+  ])
 }
 
 async function createDrive() {
   await post('/company/drives', newDrive.value)
   showCreateDrive.value = false
-  newDrive.value = {
-    drive_name: '',
-    title: '',
-    description: '',
-    eligibility_criteria: '',
-    application_deadline: '',
-  }
+  newDrive.value = emptyDrive()
   await loadDrives()
 }
 
@@ -81,12 +86,12 @@ async function setStatus(status) {
 
 async function markPlaced() {
   await post(`/company/applications/${selectedApplication.value.id}/decision`, {
-    status: 'placed',
+    status: APPLICATION_STATUS_PLACED,
     position_title: placementTitle.value,
     salary: placementSalary.value || null,
     joining_date: placementJoiningDate.value,
   })
-  selectedApplication.value.status = 'placed'
+  selectedApplication.value.status = APPLICATION_STATUS_PLACED
   placementTitle.value = ''
   placementSalary.value = ''
   placementJoiningDate.value = ''

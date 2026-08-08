@@ -4,6 +4,10 @@ Kept as plain strings/tuples (not a DB-level enum/CHECK constraint) to match
 this project's existing pattern of validating these at the route layer.
 """
 
+ROLE_ADMIN = "admin"
+ROLE_COMPANY = "company"
+ROLE_STUDENT = "student"
+
 APPLICATION_STATUS_APPLIED = "applied"
 APPLICATION_STATUS_SHORTLISTED = "shortlisted"
 APPLICATION_STATUS_INTERVIEW = "interview"

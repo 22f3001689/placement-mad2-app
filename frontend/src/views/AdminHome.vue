@@ -5,7 +5,14 @@ import { get, post } from '../api/http.js'
 import { logout } from '../state/auth.js'
 import Modal from '../components/Modal.vue'
 import CollapsibleSection from '../components/CollapsibleSection.vue'
-import { APPLICATION_STATUSES, COMPANY_APPROVAL_STATUSES, JOB_POSITION_STATUSES, statusLabel } from '../constants.js'
+import {
+  APPLICATION_STATUSES,
+  COMPANY_APPROVAL_APPROVED,
+  COMPANY_APPROVAL_PENDING,
+  COMPANY_APPROVAL_REJECTED,
+  JOB_POSITION_STATUS_ONGOING,
+  statusLabel,
+} from '../constants.js'
 
 const router = useRouter()
 
@@ -33,7 +40,7 @@ async function loadTotals() {
 async function loadRegisteredCompanies() {
   const query = q.value ? `&q=${encodeURIComponent(q.value)}` : ''
   registeredCompanies.value = await get(
-    `/admin/companies?status=${COMPANY_APPROVAL_STATUSES[1].value}${query}`
+    `/admin/companies?status=${COMPANY_APPROVAL_APPROVED}${query}`
   )
 }
 
@@ -44,13 +51,13 @@ async function loadRegisteredStudents() {
 
 async function loadPendingCompanies() {
   pendingCompanies.value = await get(
-    `/admin/companies?status=${COMPANY_APPROVAL_STATUSES[0].value}`
+    `/admin/companies?status=${COMPANY_APPROVAL_PENDING}`
   )
 }
 
 async function loadOngoingDrives() {
   ongoingDrives.value = await get(
-    `/admin/job-positions?status=${JOB_POSITION_STATUSES[0].value}`
+    `/admin/job-positions?status=${JOB_POSITION_STATUS_ONGOING}`
   )
 }
 
@@ -187,13 +194,13 @@ onMounted(() => {
             <td class="text-end">
               <button
                 class="btn btn-sm btn-success me-1"
-                @click="decideCompany(c, COMPANY_APPROVAL_STATUSES[1].value)"
+                @click="decideCompany(c, COMPANY_APPROVAL_APPROVED)"
               >
                 Approve
               </button>
               <button
                 class="btn btn-sm btn-outline-danger"
-                @click="decideCompany(c, COMPANY_APPROVAL_STATUSES[2].value)"
+                @click="decideCompany(c, COMPANY_APPROVAL_REJECTED)"
               >
                 Reject
               </button>

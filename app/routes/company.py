@@ -2,6 +2,7 @@ from datetime import date, datetime
 
 from flask import Blueprint, abort, jsonify, request
 from flask_login import current_user
+from sqlalchemy.orm import joinedload
 
 from app import db
 from app.constants import (
@@ -12,7 +13,7 @@ from app.constants import (
 )
 from app.decorators import company_approved_required
 from app.models import Application, JobPosition, Placement
-from app.utils import get_logger, static_url
+from app.utils import get_logger, iso_or_none, static_url
 
 company_bp = Blueprint("company", __name__, url_prefix="/api/company")
 
@@ -75,11 +76,7 @@ def _application_detail_payload(application):
         "drive_name": drive.drive_name,
         "job_title": drive.title,
         "status": application.status,
-        "interview_datetime": (
-            application.interview_datetime.isoformat()
-            if application.interview_datetime
-            else None
-        ),
+        "interview_datetime": iso_or_none(application.interview_datetime),
         "interview_mode": application.interview_mode,
         "company_remark": application.company_remark,
     }
@@ -156,7 +153,11 @@ def complete_drive(drive_id):
 @company_approved_required
 def list_drive_applications(drive_id):
     drive = _own_drive_or_404(drive_id)
-    applications = drive.applications
+    applications = (
+        Application.query.options(joinedload(Application.student))
+        .filter_by(job_position_id=drive.id)
+        .all()
+    )
 
     status = request.args.get("status")
     if status:
@@ -249,10 +250,16 @@ def decide_application(application_id):
         status,
     )
 
-    payload = {"id": application.id, "status": application.status}
-    if remark is not None:
-        payload["remark"] = application.company_remark
-    return jsonify(payload), 200
+    return (
+        jsonify(
+            {
+                "id": application.id,
+                "status": application.status,
+                "remark": application.company_remark,
+            }
+        ),
+        200,
+    )
 
 
 @company_bp.route("/applications/<int:application_id>/interview", methods=["POST"])
@@ -284,10 +291,13 @@ def schedule_interview(application_id):
         mode,
     )
 
-    payload = {
-        "id": application.id,
-        "interview_datetime": application.interview_datetime.isoformat(),
-    }
-    if mode is not None:
-        payload["mode"] = application.interview_mode
-    return jsonify(payload), 200
+    return (
+        jsonify(
+            {
+                "id": application.id,
+                "interview_datetime": application.interview_datetime.isoformat(),
+                "mode": application.interview_mode,
+            }
+        ),
+        200,
+    )

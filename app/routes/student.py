@@ -3,6 +3,7 @@ import os
 from flask import Blueprint, Response, current_app, jsonify, request
 from flask_login import current_user
 from sqlalchemy import or_
+from sqlalchemy.orm import joinedload
 from werkzeug.utils import secure_filename
 
 from app import db
@@ -10,12 +11,14 @@ from app.constants import (
     COMPANY_APPROVAL_APPROVED,
     JOB_POSITION_STATUS_COMPLETED,
     JOB_POSITION_STATUS_ONGOING,
+    ROLE_STUDENT,
 )
 from app.decorators import role_required
 from app.models import Application, Branch, Company, JobPosition, Placement, Skill
 from app.utils import (
     branch_payload,
     get_logger,
+    iso_or_none,
     placement_payloads_by_application_id,
     static_url,
 )
@@ -115,11 +118,7 @@ def _application_payload(application, placements_by_application_id):
         "job_title": application.job_position.title,
         "company_name": application.job_position.company.company_name,
         "status": application.status,
-        "interview_datetime": (
-            application.interview_datetime.isoformat()
-            if application.interview_datetime
-            else None
-        ),
+        "interview_datetime": iso_or_none(application.interview_datetime),
         "interview_mode": application.interview_mode,
         "company_remark": application.company_remark,
         "application_date": application.application_date.isoformat(),
@@ -128,13 +127,13 @@ def _application_payload(application, placements_by_application_id):
 
 
 @student_bp.route("/profile", methods=["GET"])
-@role_required("student")
+@role_required(ROLE_STUDENT)
 def get_profile():
     return jsonify(_profile_payload(current_user.student_profile)), 200
 
 
 @student_bp.route("/profile", methods=["POST"])
-@role_required("student")
+@role_required(ROLE_STUDENT)
 def update_profile():
     student = current_user.student_profile
     form = request.form
@@ -187,7 +186,7 @@ def update_profile():
 
 
 @student_bp.route("/organizations", methods=["GET"])
-@role_required("student")
+@role_required(ROLE_STUDENT)
 def list_organizations():
     query = Company.query.filter_by(approval_status=COMPANY_APPROVAL_APPROVED)
 
@@ -199,7 +198,7 @@ def list_organizations():
 
 
 @student_bp.route("/organizations/<int:company_id>", methods=["GET"])
-@role_required("student")
+@role_required(ROLE_STUDENT)
 def get_organization(company_id):
     company = Company.query.filter_by(
         id=company_id, approval_status=COMPANY_APPROVAL_APPROVED
@@ -211,7 +210,7 @@ def get_organization(company_id):
 
 
 @student_bp.route("/drives", methods=["GET"])
-@role_required("student")
+@role_required(ROLE_STUDENT)
 def list_drives():
     query = (
         JobPosition.query.join(Company, JobPosition.company_id == Company.id)
@@ -238,7 +237,7 @@ def list_drives():
 
 
 @student_bp.route("/drives/<int:drive_id>", methods=["GET"])
-@role_required("student")
+@role_required(ROLE_STUDENT)
 def get_drive(drive_id):
     drive = _approved_drive_or_none(drive_id)
     if drive is None:
@@ -248,7 +247,7 @@ def get_drive(drive_id):
 
 
 @student_bp.route("/drives/<int:drive_id>/apply", methods=["POST"])
-@role_required("student")
+@role_required(ROLE_STUDENT)
 def apply_to_drive(drive_id):
     drive = _approved_drive_or_none(drive_id)
     if drive is None:
@@ -277,9 +276,15 @@ def apply_to_drive(drive_id):
 
 
 @student_bp.route("/applications", methods=["GET"])
-@role_required("student")
+@role_required(ROLE_STUDENT)
 def list_applications():
-    applications = current_user.student_profile.applications
+    applications = (
+        Application.query.options(
+            joinedload(Application.job_position).joinedload(JobPosition.company)
+        )
+        .filter_by(student_id=current_user.student_profile.id)
+        .all()
+    )
     placements_by_application_id = placement_payloads_by_application_id(applications)
     return (
         jsonify(
@@ -293,7 +298,7 @@ def list_applications():
 
 
 @student_bp.route("/placement/confirmation", methods=["GET"])
-@role_required("student")
+@role_required(ROLE_STUDENT)
 def placement_confirmation():
     placement = Placement.query.filter_by(
         student_id=current_user.student_profile.id

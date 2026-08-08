@@ -70,8 +70,10 @@ async function saveProfile() {
 }
 
 async function openOrganization(org) {
-  selectedOrganization.value = await get(`/student/organizations/${org.id}`)
-  organizationDrives.value = await get(`/student/drives?company_id=${org.id}`)
+  ;[selectedOrganization.value, organizationDrives.value] = await Promise.all([
+    get(`/student/organizations/${org.id}`),
+    get(`/student/drives?company_id=${org.id}`),
+  ])
 }
 
 async function openDrive(drive) {
