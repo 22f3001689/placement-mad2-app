@@ -304,53 +304,64 @@ onMounted(() => {
       </template>
     </Modal>
 
-    <Modal :show="!!selectedStudent" title="Student Profile" @close="selectedStudent = null">
+    <Modal
+      :show="!!selectedStudent"
+      title="Student Profile"
+      size="lg"
+      @close="selectedStudent = null"
+    >
       <template v-if="selectedStudent">
-        <img
-          v-if="selectedStudent.photo_url"
-          :src="selectedStudent.photo_url"
-          alt="Student photo"
-          style="max-height: 4rem"
-          class="mb-2"
-        />
-        <p><strong>Name:</strong> {{ selectedStudent.name }}</p>
-        <p><strong>Branch:</strong> {{ selectedStudent.branch?.name }}</p>
-        <p><strong>Graduation Year:</strong> {{ selectedStudent.graduation_year }}</p>
-        <p><strong>CGPA:</strong> {{ selectedStudent.cgpa }}</p>
-        <p><strong>Skills:</strong> {{ selectedStudent.skills.map((s) => s.name).join(', ') }}</p>
-        <p><strong>Contact:</strong> {{ selectedStudent.contact }}</p>
+        <div class="d-flex gap-3 mb-3">
+          <img
+            v-if="selectedStudent.photo_url"
+            :src="selectedStudent.photo_url"
+            alt="Student photo"
+            class="rounded flex-shrink-0"
+            style="width: 96px; height: 96px; object-fit: cover"
+          />
+          <div class="row row-cols-2 g-2 flex-grow-1">
+            <div><strong>Name:</strong> {{ selectedStudent.name }}</div>
+            <div><strong>Branch:</strong> {{ selectedStudent.branch?.name }}</div>
+            <div><strong>Graduation Year:</strong> {{ selectedStudent.graduation_year }}</div>
+            <div><strong>CGPA:</strong> {{ selectedStudent.cgpa }}</div>
+            <div class="col-12"><strong>Skills:</strong> {{ selectedStudent.skills.map((s) => s.name).join(', ') }}</div>
+            <div class="col-12"><strong>Contact:</strong> {{ selectedStudent.contact }}</div>
+          </div>
+        </div>
         <a
           v-if="selectedStudent.resume_url"
           :href="selectedStudent.resume_url"
           download
-          class="btn btn-sm btn-outline-primary mb-2"
+          class="btn btn-sm btn-outline-primary mb-3"
         >
           View Resume
         </a>
         <h5>Application History</h5>
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Job Title</th>
-              <th>Company</th>
-              <th>Status</th>
-              <th>Date</th>
-              <th>Placement</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="a in selectedStudent.applications" :key="a.id">
-              <td>{{ a.job_title }}</td>
-              <td>{{ a.company_name }}</td>
-              <td>{{ statusLabel(APPLICATION_STATUSES, a.status) }}</td>
-              <td>{{ a.application_date }}</td>
-              <td>
-                <span v-if="a.placement">{{ a.placement.position_title }}</span>
-                <span v-else>—</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Job Title</th>
+                <th>Company</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th>Placement</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="a in selectedStudent.applications" :key="a.id">
+                <td>{{ a.job_title }}</td>
+                <td>{{ a.company_name }}</td>
+                <td>{{ statusLabel(APPLICATION_STATUSES, a.status) }}</td>
+                <td>{{ a.application_date?.slice(0, 10) }}</td>
+                <td>
+                  <span v-if="a.placement">{{ a.placement.position_title }}</span>
+                  <span v-else>—</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </template>
     </Modal>
   </div>

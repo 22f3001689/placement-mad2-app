@@ -5,6 +5,7 @@ from flask_login import current_user
 from sqlalchemy.orm import joinedload
 
 from app import db
+from app.cache import invalidate
 from app.constants import (
     APPLICATION_DECISION_STATUSES,
     APPLICATION_STATUS_PLACED,
@@ -120,6 +121,7 @@ def create_drive():
     )
     db.session.add(drive)
     db.session.commit()
+    invalidate("drives")
     logger.info(
         "Drive created: drive_id=%s company_id=%s title=%s",
         drive.id,
@@ -147,6 +149,7 @@ def complete_drive(drive_id):
     drive = _own_drive_or_404(drive_id)
     drive.status = JOB_POSITION_STATUS_COMPLETED
     db.session.commit()
+    invalidate("drives")
     logger.info("Drive closed: drive_id=%s company_id=%s", drive.id, drive.company_id)
     return jsonify({"id": drive.id, "status": drive.status}), 200
 
