@@ -109,6 +109,31 @@ async function onLogout() {
   router.push('/login')
 }
 
+const showExports = ref(false)
+const exportJobs = ref([])
+
+async function loadExports() {
+  exportJobs.value = await get('/company/exports')
+}
+
+async function requestExport() {
+  await post('/company/exports')
+  await loadExports()
+}
+
+async function openExports() {
+  await loadExports()
+  showExports.value = true
+}
+
+const showReports = ref(false)
+const reportJobs = ref([])
+
+async function openReports() {
+  reportJobs.value = await get('/company/reports')
+  showReports.value = true
+}
+
 onMounted(loadDrives)
 </script>
 
@@ -118,6 +143,12 @@ onMounted(loadDrives)
       <h1>Welcome {{ auth.user?.company_name }}</h1>
       <div>
         <button class="btn btn-primary me-2" @click="showCreateDrive = true">Create Drive</button>
+        <button class="btn btn-outline-secondary me-2" @click="openExports">
+          Export Applications
+        </button>
+        <button class="btn btn-outline-secondary me-2" @click="openReports">
+          Placement Reports
+        </button>
         <button class="btn btn-danger" @click="onLogout">Log out</button>
       </div>
     </div>
@@ -276,6 +307,68 @@ onMounted(loadDrives)
 
         <button class="btn btn-sm btn-secondary" @click="backToApplications">Back</button>
       </template>
+    </Modal>
+
+    <Modal :show="showExports" title="Export Applications" @close="showExports = false">
+      <button class="btn btn-sm btn-primary mb-2" @click="requestExport">
+        Request New Export
+      </button>
+      <button class="btn btn-sm btn-outline-secondary mb-2 ms-2" @click="loadExports">
+        Refresh
+      </button>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Requested</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="job in exportJobs" :key="job.id">
+            <td>{{ job.created_at }}</td>
+            <td>{{ job.status }}</td>
+            <td>
+              <a
+                v-if="job.download_url"
+                :href="job.download_url"
+                download
+                class="btn btn-sm btn-outline-primary"
+              >
+                Download
+              </a>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </Modal>
+
+    <Modal :show="showReports" title="Placement Reports" @close="showReports = false">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Period</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="job in reportJobs" :key="job.id">
+            <td>{{ job.period_start }} – {{ job.period_end }}</td>
+            <td>{{ job.status }}</td>
+            <td>
+              <a
+                v-if="job.download_url"
+                :href="job.download_url"
+                download
+                class="btn btn-sm btn-outline-primary"
+              >
+                Download
+              </a>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </Modal>
   </div>
 </template>

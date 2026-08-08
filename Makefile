@@ -1,4 +1,4 @@
-.PHONY: clean db-clean db-reset venv activate format install db-init db-migrate db-seed frontend-install frontend-build
+.PHONY: clean db-clean db-reset venv activate format install db-init db-migrate db-seed frontend-install frontend-build redis-up redis-down celery-worker celery-beat backend frontend dev
 -include .env
 
 ##############################################################################
@@ -39,6 +39,23 @@ frontend-build: # Build the Vue frontend into app/static/dist
 	@echo "Done.\n"
 
 ##############################################################################
+# Run servers
+##############################################################################
+backend: # Run the Flask backend dev server on :5000
+	@echo "Starting Flask backend on :5000..."
+	$(PYTHON) -m flask run
+
+frontend: # Run the Vite frontend dev server on :5173 (proxies /api to :5000)
+	@echo "Starting Vite frontend dev server on :5173..."
+	cd frontend && npm run dev
+
+dev: # Run backend + frontend dev servers together; Ctrl+C stops both
+	@trap 'kill 0' INT TERM; \
+	$(MAKE) backend & \
+	$(MAKE) frontend & \
+	wait
+
+##############################################################################
 # Development process
 ##############################################################################
 format:
@@ -73,6 +90,26 @@ db-clean: # Drop database only (keeps migrations)
 	@echo "Dropping database..."
 	-rm -f app.db
 	@echo "Done. Database removed, migrations preserved.\n"
+
+
+##############################################################################
+# Background jobs (Celery + Redis)
+##############################################################################
+redis-up: # Start local Redis via Docker
+	@echo "Starting Redis..."
+	docker compose up -d redis
+	@echo "Done.\n"
+
+redis-down: # Stop local Redis
+	@echo "Stopping Redis..."
+	docker compose down redis
+	@echo "Done.\n"
+
+celery-worker: # Run the Celery worker
+	$(PYTHON) -m celery -A app.celery_app worker --loglevel=info
+
+celery-beat: # Run the Celery Beat scheduler
+	$(PYTHON) -m celery -A app.celery_app beat --loglevel=info
 
 
 clean: # Clean all working folders

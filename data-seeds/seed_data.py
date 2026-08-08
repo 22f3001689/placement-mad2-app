@@ -5,6 +5,7 @@ from app.models import (
     Application,
     Branch,
     Company,
+    EmailTemplate,
     JobPosition,
     Placement,
     Skill,
@@ -43,6 +44,31 @@ SKILLS = [
     "Communication",
 ]
 
+EMAIL_TEMPLATES = [
+    (
+        "interview_reminder",
+        "Interview Reminder: {job_title} at {company_name}",
+        (
+            "Hi {student_name},\n\n"
+            "This is a reminder that you have an interview for {job_title} at "
+            "{company_name} on {interview_datetime}.\n\nGood luck!"
+        ),
+    ),
+    (
+        "export_ready",
+        "Your export is ready",
+        "Hi {name},\n\nYour requested export is ready to download:\n{download_url}",
+    ),
+    (
+        "report_ready",
+        "Placement report ready for {company_name}",
+        (
+            "Hi,\n\nA new placement report for {company_name} covering "
+            "{period_start} to {period_end} is ready to download:\n{download_url}"
+        ),
+    ),
+]
+
 
 def seed_database():
     app = create_app()
@@ -67,13 +93,22 @@ def seed_database():
             skills[name] = skill
         db.session.commit()
 
+        print("Creating email templates...")
+        for key, subject, body in EMAIL_TEMPLATES:
+            db.session.add(EmailTemplate(key=key, subject=subject, body=body))
+        db.session.commit()
+
         print("Creating admin...")
-        admin = User(username="admin", role="admin")
+        admin = User(
+            username="admin", email="admin@placement-portal.example", role="admin"
+        )
         admin.set_password("admin123")
         db.session.add(admin)
 
         print("Creating a sample company...")
-        company_user = User(username="acme_corp", role="company")
+        company_user = User(
+            username="acme_corp", email="hr@acme.example", role="company"
+        )
         company_user.set_password("company123")
         db.session.add(company_user)
         db.session.commit()
@@ -96,7 +131,9 @@ def seed_database():
         db.session.add(company)
 
         print("Creating a sample student...")
-        student_user = User(username="john_doe", role="student")
+        student_user = User(
+            username="john_doe", email="john.doe@example.com", role="student"
+        )
         student_user.set_password("student123")
         db.session.add(student_user)
         db.session.commit()

@@ -33,15 +33,19 @@ def _user_payload(user):
     return payload
 
 
-def _username_taken_or_weak_password_error(username, password):
-    """The two username/password checks shared verbatim by both registration routes.
+def _registration_error(username, password, email):
+    """The username/password/email checks shared verbatim by both registration routes.
 
-    Returns (error_message, status_code), or (None, None) if both pass.
+    Returns (error_message, status_code), or (None, None) if all pass.
     """
     if len(password) < 6:
         return "Password must be at least 6 characters long", 400
+    if "@" not in email:
+        return "email must be a valid email address", 400
     if User.query.filter_by(username=username).first():
         return "Username already exists", 409
+    if User.query.filter_by(email=email).first():
+        return "Email already registered", 409
     return None, None
 
 
@@ -50,18 +54,22 @@ def register_student():
     data = request.get_json(silent=True) or {}
     username = data.get("username")
     password = data.get("password")
+    email = data.get("email")
     name = data.get("name")
     branch_id = data.get("branch_id")
 
-    if not all([username, password, name]):
-        return jsonify({"error": "username, password and name are required"}), 400
-    error, status = _username_taken_or_weak_password_error(username, password)
+    if not all([username, password, email, name]):
+        return (
+            jsonify({"error": "username, password, email and name are required"}),
+            400,
+        )
+    error, status = _registration_error(username, password, email)
     if error:
         return jsonify({"error": error}), status
     if branch_id is not None and Branch.query.get(branch_id) is None:
         return jsonify({"error": "branch_id must be a valid Branch"}), 400
 
-    user = User(username=username, role=ROLE_STUDENT)
+    user = User(username=username, email=email, role=ROLE_STUDENT)
     user.set_password(password)
     db.session.add(user)
     db.session.flush()
@@ -79,18 +87,21 @@ def register_company():
     data = request.get_json(silent=True) or {}
     username = data.get("username")
     password = data.get("password")
+    email = data.get("email")
     company_name = data.get("company_name")
 
-    if not all([username, password, company_name]):
+    if not all([username, password, email, company_name]):
         return (
-            jsonify({"error": "username, password and company_name are required"}),
+            jsonify(
+                {"error": "username, password, email and company_name are required"}
+            ),
             400,
         )
-    error, status = _username_taken_or_weak_password_error(username, password)
+    error, status = _registration_error(username, password, email)
     if error:
         return jsonify({"error": error}), status
 
-    user = User(username=username, role=ROLE_COMPANY)
+    user = User(username=username, email=email, role=ROLE_COMPANY)
     user.set_password(password)
     db.session.add(user)
     db.session.flush()

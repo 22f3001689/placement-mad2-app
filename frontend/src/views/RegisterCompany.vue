@@ -6,6 +6,7 @@ import { post } from '../api/http.js'
 const router = useRouter()
 const username = ref('')
 const password = ref('')
+const email = ref('')
 const companyName = ref('')
 const error = ref('')
 
@@ -15,6 +16,7 @@ async function onSubmit() {
     await post('/auth/register/company', {
       username: username.value,
       password: password.value,
+      email: email.value,
       company_name: companyName.value,
     })
     router.push('/login')
@@ -39,6 +41,10 @@ async function onSubmit() {
       <div class="mb-3">
         <label class="form-label">Password</label>
         <input v-model="password" type="password" class="form-control" minlength="6" required />
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Email</label>
+        <input v-model="email" type="email" class="form-control" required />
       </div>
       <div v-if="error" class="alert alert-danger">{{ error }}</div>
       <button type="submit" class="btn btn-primary">Register</button>

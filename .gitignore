@@ -68,6 +68,8 @@ htmlcov/
 # Exported reports / generated files
 *.csv
 *.pdf
+app/static/exports/
+app/static/reports/
 # Except the seeded demo resume placeholder, needed for a fresh clone to demo end-to-end
 !app/static/uploads/resumes/john_doe.pdf
 
