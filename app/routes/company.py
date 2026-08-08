@@ -210,15 +210,10 @@ def decide_application(application_id):
     previous_status = application.status
 
     if status == APPLICATION_STATUS_PLACED:
-        position_title = data.get("position_title")
         joining_date = data.get("joining_date")
-        if not position_title or not joining_date:
+        if not joining_date:
             return (
-                jsonify(
-                    {
-                        "error": "position_title and joining_date are required to mark Placed"
-                    }
-                ),
+                jsonify({"error": "joining_date is required to mark Placed"}),
                 400,
             )
         try:
@@ -226,12 +221,17 @@ def decide_application(application_id):
         except ValueError:
             return jsonify({"error": "joining_date must be a valid ISO date"}), 400
 
+        position_title = data.get("position_title") or application.job_position.title
+        salary = data.get("salary")
+        if salary is None:
+            salary = application.job_position.salary
+
         placement = Placement(
             student_id=application.student_id,
             company_id=application.job_position.company_id,
             application_id=application.id,
             position_title=position_title,
-            salary=data.get("salary"),
+            salary=salary,
             joining_date=joining_date,
         )
         db.session.add(placement)

@@ -1,6 +1,8 @@
 // Mirrors app/constants.py — single source of truth for these fixed vocabularies.
 
 export const APPLICATION_STATUS_APPLIED = 'applied'
+export const APPLICATION_STATUS_INTERVIEW = 'interview'
+export const APPLICATION_STATUS_OFFER = 'offer'
 export const APPLICATION_STATUS_PLACED = 'placed'
 export const APPLICATION_STATUS_REJECTED = 'rejected'
 
@@ -8,7 +10,7 @@ export const APPLICATION_STATUSES = [
   { value: APPLICATION_STATUS_APPLIED, label: 'Applied' },
   { value: 'shortlisted', label: 'Shortlisted' },
   { value: 'interview', label: 'Interview' },
-  { value: 'offer', label: 'Offer' },
+  { value: APPLICATION_STATUS_OFFER, label: 'Offer' },
   { value: APPLICATION_STATUS_REJECTED, label: 'Rejected' },
   { value: APPLICATION_STATUS_PLACED, label: 'Placed' },
 ]

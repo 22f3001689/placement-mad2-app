@@ -6,6 +6,8 @@ import { auth, logout } from '../state/auth.js'
 import Modal from '../components/Modal.vue'
 import {
   APPLICATION_STATUS_APPLIED,
+  APPLICATION_STATUS_INTERVIEW,
+  APPLICATION_STATUS_OFFER,
   APPLICATION_STATUS_PLACED,
   APPLICATION_STATUSES,
   JOB_POSITION_STATUS_COMPLETED,
@@ -41,9 +43,15 @@ const decisionStatuses = APPLICATION_STATUSES.filter(
 )
 const isFinalStatus = (status) => TERMINAL_APPLICATION_STATUSES.includes(status)
 
-const placementTitle = ref('')
-const placementSalary = ref('')
+const pendingStatus = ref('')
+const pendingInterviewDatetime = ref('')
 const placementJoiningDate = ref('')
+
+const saveMessage = ref('')
+function flashSaveMessage() {
+  saveMessage.value = 'Record updated successfully'
+  setTimeout(() => (saveMessage.value = ''), 2000)
+}
 
 async function loadDrives() {
   ;[upcomingDrives.value, closedDrives.value] = await Promise.all([
@@ -71,6 +79,13 @@ async function openApplications(drive) {
 
 async function reviewApplication(application) {
   selectedApplication.value = await get(`/company/applications/${application.id}`)
+  // The dropdown only offers decision statuses (no "applied"), so an application still
+  // "applied" must default to the first selectable option to keep the select's visible
+  // value in sync with pendingStatus - otherwise Save sees no diff and does nothing.
+  pendingStatus.value = decisionStatuses.some((s) => s.value === selectedApplication.value.status)
+    ? selectedApplication.value.status
+    : decisionStatuses[0].value
+  pendingInterviewDatetime.value = selectedApplication.value.interview_datetime || ''
   applicationsForDrive.value = null
 }
 
@@ -79,29 +94,31 @@ async function backToApplications() {
   await openApplications(currentDrive.value)
 }
 
-async function setStatus(status) {
-  await post(`/company/applications/${selectedApplication.value.id}/decision`, { status })
-  selectedApplication.value.status = status
+async function saveDecision() {
+  if (pendingInterviewDatetime.value && pendingInterviewDatetime.value !== selectedApplication.value.interview_datetime) {
+    await post(`/company/applications/${selectedApplication.value.id}/interview`, {
+      interview_datetime: pendingInterviewDatetime.value,
+    })
+    selectedApplication.value.interview_datetime = pendingInterviewDatetime.value
+  }
+  if (pendingStatus.value !== selectedApplication.value.status) {
+    await post(`/company/applications/${selectedApplication.value.id}/decision`, {
+      status: pendingStatus.value,
+    })
+    selectedApplication.value.status = pendingStatus.value
+  }
+  flashSaveMessage()
 }
 
 async function markPlaced() {
   await post(`/company/applications/${selectedApplication.value.id}/decision`, {
     status: APPLICATION_STATUS_PLACED,
-    position_title: placementTitle.value,
-    salary: placementSalary.value || null,
     joining_date: placementJoiningDate.value,
   })
   selectedApplication.value.status = APPLICATION_STATUS_PLACED
-  placementTitle.value = ''
-  placementSalary.value = ''
+  pendingStatus.value = APPLICATION_STATUS_PLACED
   placementJoiningDate.value = ''
-}
-
-async function setInterview(interviewDatetime) {
-  await post(`/company/applications/${selectedApplication.value.id}/interview`, {
-    interview_datetime: interviewDatetime,
-  })
-  selectedApplication.value.interview_datetime = interviewDatetime
+  flashSaveMessage()
 }
 
 async function onLogout() {
@@ -230,7 +247,7 @@ onMounted(loadDrives)
       </template>
     </Modal>
 
-    <Modal :show="!!selectedApplication" title="Student Application" @close="selectedApplication = null">
+    <Modal :show="!!selectedApplication" title="Student Application" @close="backToApplications">
       <template v-if="selectedApplication">
         <img
           v-if="selectedApplication.student_photo_url"
@@ -262,50 +279,37 @@ onMounted(loadDrives)
         <template v-else>
           <div class="mb-2">
             <label class="form-label">Status</label>
-            <select
-              class="form-select"
-              :value="selectedApplication.status"
-              @change="setStatus($event.target.value)"
-            >
+            <select class="form-select" v-model="pendingStatus">
               <option v-for="s in decisionStatuses" :key="s.value" :value="s.value">
                 {{ s.label }}
               </option>
             </select>
           </div>
-          <div class="mb-2">
+          <div v-if="pendingStatus === APPLICATION_STATUS_INTERVIEW" class="mb-2">
             <label class="form-label">Interview Date/Time</label>
             <input
               type="datetime-local"
               class="form-control"
-              :value="selectedApplication.interview_datetime"
-              @change="setInterview($event.target.value)"
+              v-model="pendingInterviewDatetime"
             />
           </div>
-          <div class="card p-2 mb-2">
+          <button class="btn btn-sm btn-primary mb-2" @click="saveDecision">Save</button>
+          <Transition name="fade">
+            <span v-if="saveMessage" class="text-success ms-2">{{ saveMessage }}</span>
+          </Transition>
+
+          <div v-if="selectedApplication.status === APPLICATION_STATUS_OFFER" class="card p-2 mb-2">
             <label class="form-label">Mark as Placed</label>
-            <input
-              v-model="placementTitle"
-              class="form-control mb-1"
-              placeholder="Position Title"
-            />
-            <input
-              v-model="placementSalary"
-              type="number"
-              class="form-control mb-1"
-              placeholder="Salary"
-            />
-            <input v-model="placementJoiningDate" type="date" class="form-control mb-2" />
+            <input v-model="placementJoiningDate" type="date" class="form-control mb-2" placeholder="Joining Date" />
             <button
               class="btn btn-sm btn-success"
-              :disabled="!placementTitle || !placementJoiningDate"
+              :disabled="!placementJoiningDate"
               @click="markPlaced"
             >
               Confirm Placement
             </button>
           </div>
         </template>
-
-        <button class="btn btn-sm btn-secondary" @click="backToApplications">Back</button>
       </template>
     </Modal>
 
@@ -372,3 +376,14 @@ onMounted(loadDrives)
     </Modal>
   </div>
 </template>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.5s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>

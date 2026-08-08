@@ -1,4 +1,4 @@
-.PHONY: clean db-clean db-reset venv activate format install db-init db-migrate db-seed frontend-install frontend-build redis-up redis-down celery-worker celery-beat backend frontend dev
+.PHONY: clean db-clean db-reset venv activate format install db-init db-migrate db-seed frontend-install frontend-build redis-up redis-down celery-worker celery-beat backend frontend dev stop
 -include .env
 
 ##############################################################################
@@ -54,6 +54,15 @@ dev: # Run backend + frontend dev servers together; Ctrl+C stops both
 	$(MAKE) backend & \
 	$(MAKE) frontend & \
 	wait
+
+stop: # Stop backend/frontend/celery worker/beat processes and Redis
+	@echo "Stopping local processes..."
+	-pkill -f "flask run"
+	-pkill -f "vite"
+	-pkill -f "celery -A app.celery_app worker"
+	-pkill -f "celery -A app.celery_app beat"
+	-$(MAKE) redis-down
+	@echo "Done.\n"
 
 ##############################################################################
 # Development process
