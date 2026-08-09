@@ -19,7 +19,7 @@ async function onSubmit() {
       email: email.value,
       company_name: companyName.value,
     })
-    router.push('/login')
+    router.push({ path: '/login', query: { registered: 'company' } })
   } catch (e) {
     error.value = e.message
   }

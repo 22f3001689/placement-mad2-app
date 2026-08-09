@@ -115,6 +115,13 @@ async function decideCompany(company, status) {
   await Promise.all([loadPendingCompanies(), loadRegisteredCompanies(), loadTotals()])
 }
 
+async function rejectCompany(company) {
+  if (!confirm(`Reject ${company.company_name}'s registration request?`)) {
+    return
+  }
+  await decideCompany(company, COMPANY_APPROVAL_REJECTED)
+}
+
 async function toggleActive(account) {
   await post(`/admin/users/${account.user_id}/toggle-active`)
   await Promise.all([loadRegisteredCompanies(), loadRegisteredStudents()])
@@ -263,7 +270,7 @@ onMounted(() => {
               </button>
               <button
                 class="btn btn-sm btn-outline-danger"
-                @click="decideCompany(c, COMPANY_APPROVAL_REJECTED)"
+                @click="rejectCompany(c)"
               >
                 Reject
               </button>
