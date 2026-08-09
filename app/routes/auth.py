@@ -2,9 +2,9 @@ from flask import Blueprint, jsonify, request
 from flask_login import current_user, login_required, login_user, logout_user
 
 from app import db
-from app.constants import ROLE_COMPANY, ROLE_STUDENT
+from app.constants import COMPANY_APPROVAL_APPROVED, ROLE_COMPANY, ROLE_STUDENT
 from app.models import Branch, Company, Skill, Student, User
-from app.utils import branch_payload, get_logger
+from app.utils import branch_payload, default_email, get_logger
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
@@ -30,6 +30,8 @@ def _user_payload(user):
     if user.role == ROLE_COMPANY:
         payload["approval_status"] = user.company_profile.approval_status
         payload["company_name"] = user.company_profile.company_name
+    elif user.role == ROLE_STUDENT:
+        payload["student_name"] = user.student_profile.name
     return payload
 
 
@@ -58,11 +60,12 @@ def register_student():
     name = data.get("name")
     branch_id = data.get("branch_id")
 
-    if not all([username, password, email, name]):
+    if not all([username, password, name]):
         return (
-            jsonify({"error": "username, password, email and name are required"}),
+            jsonify({"error": "username, password and name are required"}),
             400,
         )
+    email = email or default_email(name)
     error, status = _registration_error(username, password, email)
     if error:
         return jsonify({"error": error}), status
@@ -124,7 +127,26 @@ def login():
     if user is None or not user.check_password(password):
         logger.warning("Login failed: username=%s (invalid credentials)", username)
         return jsonify({"error": "Invalid username or password"}), 401
-    if not user.is_active:
+    if user.role == ROLE_COMPANY:
+        company = user.company_profile
+        if company.approval_status != COMPANY_APPROVAL_APPROVED or not user.is_active:
+            logger.warning(
+                "Login blocked: user_id=%s username=%s (not approved/active)",
+                user.id,
+                username,
+            )
+            return (
+                jsonify(
+                    {
+                        "error": (
+                            "Either request for registration is pending or the company "
+                            "is blacklisted. Please contact admin for support"
+                        )
+                    }
+                ),
+                403,
+            )
+    elif not user.is_active:
         logger.warning(
             "Login blocked: user_id=%s username=%s (deactivated)", user.id, username
         )

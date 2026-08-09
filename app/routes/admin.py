@@ -3,11 +3,14 @@ from sqlalchemy import or_
 from sqlalchemy.orm import contains_eager, joinedload
 
 from app import db
+from app.cache import cached_response, invalidate
 from app.constants import (
     COMPANY_APPROVAL_APPROVED,
     COMPANY_DECISION_STATUSES,
     JOB_POSITION_STATUS_COMPLETED,
+    JOB_POSITION_STATUS_ONGOING,
     ROLE_ADMIN,
+    ROLE_COMPANY,
 )
 from app.decorators import role_required
 from app.models import Application, Company, JobPosition, Student, User
@@ -61,7 +64,7 @@ def _job_position_payload(job_position):
         "location": job_position.location,
         "eligibility_criteria": job_position.eligibility_criteria,
         "salary": job_position.salary,
-        "skills_required": job_position.skills_required,
+        "skills": [{"id": s.id, "name": s.name} for s in job_position.skills],
         "status": job_position.status,
         "application_deadline": job_position.application_deadline.isoformat(),
     }
@@ -102,6 +105,7 @@ def _student_detail_payload(student):
         "id": student.id,
         "user_id": student.user_id,
         "username": student.user.username,
+        "email": student.user.email,
         "is_active": student.user.is_active,
         "name": student.name,
         "branch": branch_payload(student.branch) if student.branch else None,
@@ -138,6 +142,7 @@ def dashboard():
 
 @admin_bp.route("/companies", methods=["GET"])
 @role_required(ROLE_ADMIN)
+@cached_response("admin_companies")
 def list_companies():
     query = Company.query.options(joinedload(Company.user))
 
@@ -168,6 +173,9 @@ def decide_company(company_id):
 
     company.approval_status = status
     db.session.commit()
+    invalidate("admin_companies")
+    invalidate("orgs")
+    invalidate("drives")
     logger.info(
         "Company approval decision: company_id=%s status=%s", company.id, status
     )
@@ -176,6 +184,7 @@ def decide_company(company_id):
 
 @admin_bp.route("/students", methods=["GET"])
 @role_required(ROLE_ADMIN)
+@cached_response("admin_students")
 def list_students():
     query = Student.query.join(User, Student.user_id == User.id).options(
         contains_eager(Student.user)
@@ -249,11 +258,36 @@ def toggle_active(user_id):
         return jsonify({"error": "Cannot deactivate the Admin account"}), 403
 
     user.is_active = not user.is_active
+
+    affected_drive_count = 0
+    if user.role == ROLE_COMPANY:
+        if not user.is_active:
+            filter_kwargs = {"status": JOB_POSITION_STATUS_ONGOING}
+            update_values = {
+                "status": JOB_POSITION_STATUS_COMPLETED,
+                "closed_by_admin": True,
+            }
+        else:
+            filter_kwargs = {"closed_by_admin": True}
+            update_values = {
+                "status": JOB_POSITION_STATUS_ONGOING,
+                "closed_by_admin": False,
+            }
+        affected_drive_count = JobPosition.query.filter_by(
+            company_id=user.company_profile.id, **filter_kwargs
+        ).update(update_values)
+
     db.session.commit()
+    invalidate("admin_companies")
+    invalidate("admin_students")
+    if user.role == ROLE_COMPANY:
+        invalidate("orgs")
+        invalidate("drives")
     logger.info(
-        "User active-status toggled: user_id=%s role=%s is_active=%s",
+        "User active-status toggled: user_id=%s role=%s is_active=%s affected_drives=%s",
         user.id,
         user.role,
         user.is_active,
+        affected_drive_count,
     )
     return jsonify({"id": user.id, "is_active": user.is_active}), 200

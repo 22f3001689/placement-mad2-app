@@ -5,6 +5,7 @@ from flask_login import current_user
 from sqlalchemy.orm import joinedload
 
 from app import db
+from app.cache import invalidate
 from app.constants import (
     APPLICATION_DECISION_STATUSES,
     APPLICATION_STATUS_PLACED,
@@ -14,7 +15,7 @@ from app.constants import (
     TERMINAL_APPLICATION_STATUSES,
 )
 from app.decorators import company_approved_required
-from app.models import Application, ExportJob, JobPosition, Placement
+from app.models import Application, ExportJob, JobPosition, Placement, Skill
 from app.utils import export_job_payload, get_logger, iso_or_none, static_url
 
 company_bp = Blueprint("company", __name__, url_prefix="/api/company")
@@ -27,6 +28,10 @@ def _own_drive_or_404(drive_id):
     if drive is None or drive.company_id != current_user.company_profile.id:
         abort(404)
     return drive
+
+
+def _skills_from_ids(skill_ids):
+    return Skill.query.filter(Skill.id.in_(skill_ids or [])).all()
 
 
 def _own_application_or_404(application_id):
@@ -48,6 +53,7 @@ def _drive_payload(drive):
         "eligibility_criteria": drive.eligibility_criteria,
         "salary": drive.salary,
         "location": drive.location,
+        "skills": [{"id": s.id, "name": s.name} for s in drive.skills],
         "status": drive.status,
         "application_deadline": drive.application_deadline.isoformat(),
     }
@@ -91,11 +97,15 @@ def create_drive():
     drive_name = data.get("drive_name")
     title = data.get("title")
     application_deadline = data.get("application_deadline")
+    salary = data.get("salary")
+    location = data.get("location")
 
-    if not all([drive_name, title, application_deadline]):
+    if not all([drive_name, title, application_deadline, salary, location]):
         return (
             jsonify(
-                {"error": "drive_name, title and application_deadline are required"}
+                {
+                    "error": "drive_name, title, location, salary and application_deadline are required"
+                }
             ),
             400,
         )
@@ -116,10 +126,12 @@ def create_drive():
         eligibility_criteria=data.get("eligibility_criteria"),
         salary=data.get("salary"),
         location=data.get("location"),
+        skills=_skills_from_ids(data.get("skill_ids")),
         application_deadline=deadline,
     )
     db.session.add(drive)
     db.session.commit()
+    invalidate("drives")
     logger.info(
         "Drive created: drive_id=%s company_id=%s title=%s",
         drive.id,
@@ -127,6 +139,49 @@ def create_drive():
         title,
     )
     return jsonify(_drive_payload(drive)), 201
+
+
+@company_bp.route("/drives/<int:drive_id>", methods=["PUT"])
+@company_approved_required
+def update_drive(drive_id):
+    drive = _own_drive_or_404(drive_id)
+    data = request.get_json(silent=True) or {}
+    drive_name = data.get("drive_name")
+    title = data.get("title")
+    application_deadline = data.get("application_deadline")
+    salary = data.get("salary")
+    location = data.get("location")
+
+    if not all([drive_name, title, application_deadline, salary, location]):
+        return (
+            jsonify(
+                {
+                    "error": "drive_name, title, location, salary and application_deadline are required"
+                }
+            ),
+            400,
+        )
+
+    try:
+        deadline = datetime.fromisoformat(application_deadline)
+    except ValueError:
+        return (
+            jsonify({"error": "application_deadline must be a valid ISO datetime"}),
+            400,
+        )
+
+    drive.drive_name = drive_name
+    drive.title = title
+    drive.description = data.get("description")
+    drive.eligibility_criteria = data.get("eligibility_criteria")
+    drive.salary = salary
+    drive.location = location
+    drive.skills = _skills_from_ids(data.get("skill_ids"))
+    drive.application_deadline = deadline
+    db.session.commit()
+    invalidate("drives")
+    logger.info("Drive updated: drive_id=%s company_id=%s", drive.id, drive.company_id)
+    return jsonify(_drive_payload(drive)), 200
 
 
 @company_bp.route("/drives", methods=["GET"])
@@ -147,6 +202,7 @@ def complete_drive(drive_id):
     drive = _own_drive_or_404(drive_id)
     drive.status = JOB_POSITION_STATUS_COMPLETED
     db.session.commit()
+    invalidate("drives")
     logger.info("Drive closed: drive_id=%s company_id=%s", drive.id, drive.company_id)
     return jsonify({"id": drive.id, "status": drive.status}), 200
 
@@ -207,15 +263,10 @@ def decide_application(application_id):
     previous_status = application.status
 
     if status == APPLICATION_STATUS_PLACED:
-        position_title = data.get("position_title")
         joining_date = data.get("joining_date")
-        if not position_title or not joining_date:
+        if not joining_date:
             return (
-                jsonify(
-                    {
-                        "error": "position_title and joining_date are required to mark Placed"
-                    }
-                ),
+                jsonify({"error": "joining_date is required to mark Placed"}),
                 400,
             )
         try:
@@ -223,12 +274,17 @@ def decide_application(application_id):
         except ValueError:
             return jsonify({"error": "joining_date must be a valid ISO date"}), 400
 
+        position_title = data.get("position_title") or application.job_position.title
+        salary = data.get("salary")
+        if salary is None:
+            salary = application.job_position.salary
+
         placement = Placement(
             student_id=application.student_id,
             company_id=application.job_position.company_id,
             application_id=application.id,
             position_title=position_title,
-            salary=data.get("salary"),
+            salary=salary,
             joining_date=joining_date,
         )
         db.session.add(placement)

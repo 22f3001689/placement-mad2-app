@@ -1,12 +1,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { get, post, postForm } from '../api/http.js'
-import { auth, logout } from '../state/auth.js'
+import { auth } from '../state/auth.js'
 import Modal from '../components/Modal.vue'
-import { APPLICATION_STATUSES, statusLabel } from '../constants.js'
-
-const router = useRouter()
+import { APPLICATION_STATUSES, EXPORT_JOB_STATUSES, statusLabel } from '../constants.js'
 
 const organizations = ref([])
 const applications = ref([])
@@ -104,11 +101,6 @@ async function applyToDrive() {
   await loadApplications()
 }
 
-async function onLogout() {
-  await logout()
-  router.push('/login')
-}
-
 onMounted(() => {
   loadOrganizations()
   loadApplications()
@@ -119,7 +111,7 @@ onMounted(() => {
 <template>
   <div class="container" style="margin-top: 3rem">
     <div class="d-flex justify-content-between align-items-center mb-3">
-      <h1>Welcome {{ auth.user?.username }}</h1>
+      <h1>Welcome {{ auth.user?.student_name }}</h1>
       <div>
         <button class="btn btn-outline-secondary me-2" @click="openEditProfile">Edit Profile</button>
         <button class="btn btn-outline-secondary me-2" @click="showHistory = true">History</button>
@@ -134,12 +126,11 @@ onMounted(() => {
         >
           Download Placement Confirmation
         </a>
-        <button class="btn btn-danger" @click="onLogout">Log out</button>
       </div>
     </div>
 
     <form class="d-flex mb-4" @submit.prevent="loadOrganizations">
-      <input v-model="q" class="form-control me-2" placeholder="Search Companies, Job Titles or Skills" />
+      <input v-model="q" class="form-control me-2" placeholder="Search companies / skills" />
       <button class="btn btn-outline-secondary" type="submit">Search</button>
     </form>
 
@@ -259,6 +250,7 @@ onMounted(() => {
             <p><strong>Eligibility Criteria:</strong> {{ selectedDrive.eligibility_criteria }}</p>
             <p><strong>Location:</strong> {{ selectedDrive.location }}</p>
             <p><strong>Salary:</strong> {{ selectedDrive.salary }}</p>
+            <p><strong>Skills Required:</strong> {{ selectedDrive.skills?.map((s) => s.name).join(', ') }}</p>
           </div>
           <div class="col-4 text-center">
             <img
@@ -333,7 +325,7 @@ onMounted(() => {
         <tbody>
           <tr v-for="job in exportJobs" :key="job.id">
             <td>{{ job.created_at }}</td>
-            <td>{{ job.status }}</td>
+            <td>{{ statusLabel(EXPORT_JOB_STATUSES, job.status) }}</td>
             <td>
               <a
                 v-if="job.download_url"

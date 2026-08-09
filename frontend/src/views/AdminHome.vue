@@ -1,8 +1,6 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted } from 'vue'
 import { get, post } from '../api/http.js'
-import { logout } from '../state/auth.js'
 import Modal from '../components/Modal.vue'
 import CollapsibleSection from '../components/CollapsibleSection.vue'
 import {
@@ -13,8 +11,6 @@ import {
   JOB_POSITION_STATUS_ONGOING,
   statusLabel,
 } from '../constants.js'
-
-const router = useRouter()
 
 const totals = ref(null)
 const q = ref('')
@@ -47,7 +43,18 @@ async function loadRegisteredCompanies() {
 async function loadRegisteredStudents() {
   const query = q.value ? `?q=${encodeURIComponent(q.value)}` : ''
   registeredStudents.value = await get(`/admin/students${query}`)
+  studentsPage.value = 1
 }
+
+const STUDENTS_PER_PAGE = 10
+const studentsPage = ref(1)
+const studentsPageCount = computed(() =>
+  Math.max(1, Math.ceil(registeredStudents.value.length / STUDENTS_PER_PAGE))
+)
+const pagedStudents = computed(() => {
+  const start = (studentsPage.value - 1) * STUDENTS_PER_PAGE
+  return registeredStudents.value.slice(start, start + STUDENTS_PER_PAGE)
+})
 
 async function loadPendingCompanies() {
   pendingCompanies.value = await get(
@@ -61,13 +68,46 @@ async function loadOngoingDrives() {
   )
 }
 
+const filteredOngoingDrives = computed(() => {
+  const needle = q.value.trim().toLowerCase()
+  if (!needle) return ongoingDrives.value
+  return ongoingDrives.value.filter(
+    (d) =>
+      d.title.toLowerCase().includes(needle) ||
+      d.company_name.toLowerCase().includes(needle)
+  )
+})
+
 async function loadApplications() {
   applications.value = await get('/admin/applications')
+  applicationsPage.value = 1
 }
+
+const APPLICATIONS_PER_PAGE = 10
+const applicationsPage = ref(1)
+
+const filteredApplications = computed(() => {
+  const needle = q.value.trim().toLowerCase()
+  if (!needle) return applications.value
+  return applications.value.filter(
+    (a) =>
+      a.student_name.toLowerCase().includes(needle) ||
+      a.company_name.toLowerCase().includes(needle) ||
+      a.job_title.toLowerCase().includes(needle)
+  )
+})
+const applicationsPageCount = computed(() =>
+  Math.max(1, Math.ceil(filteredApplications.value.length / APPLICATIONS_PER_PAGE))
+)
+const pagedApplications = computed(() => {
+  const start = (applicationsPage.value - 1) * APPLICATIONS_PER_PAGE
+  return filteredApplications.value.slice(start, start + APPLICATIONS_PER_PAGE)
+})
 
 function onSearch() {
   loadRegisteredCompanies()
   loadRegisteredStudents()
+  applicationsPage.value = 1
 }
 
 async function decideCompany(company, status) {
@@ -75,20 +115,36 @@ async function decideCompany(company, status) {
   await Promise.all([loadPendingCompanies(), loadRegisteredCompanies(), loadTotals()])
 }
 
+async function rejectCompany(company) {
+  if (!confirm(`Reject ${company.company_name}'s registration request?`)) {
+    return
+  }
+  await decideCompany(company, COMPANY_APPROVAL_REJECTED)
+}
+
 async function toggleActive(account) {
   await post(`/admin/users/${account.user_id}/toggle-active`)
   await Promise.all([loadRegisteredCompanies(), loadRegisteredStudents()])
 }
 
+async function blacklistCompany(company) {
+  if (
+    !confirm(
+      `Blacklist ${company.company_name}? This will also close all of its ongoing drives.`
+    )
+  ) {
+    return
+  }
+  await toggleActive(company)
+}
+
 async function completeDrive(drive) {
+  if (!confirm(`Mark "${drive.title}" as complete? This closes it to new applications.`)) {
+    return
+  }
   await post(`/admin/job-positions/${drive.id}/complete`)
   selectedDrive.value = null
   await loadOngoingDrives()
-}
-
-async function onLogout() {
-  await logout()
-  router.push('/login')
 }
 
 onMounted(() => {
@@ -104,10 +160,7 @@ onMounted(() => {
 <template>
   <div class="container" style="margin-top: 3rem">
     <!-- Section 1: welcome, totals, search -->
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h1>Welcome Admin</h1>
-      <button class="btn btn-danger" @click="onLogout">Log out</button>
-    </div>
+    <h1 class="mb-3">Welcome Admin</h1>
 
     <div class="row g-3 mb-3" v-if="totals">
       <div class="col-md-3">
@@ -137,7 +190,7 @@ onMounted(() => {
     </div>
 
     <form class="d-flex mb-4" @submit.prevent="onSearch">
-      <input v-model="q" class="form-control me-2" placeholder="Search Students or Companies" />
+      <input v-model="q" class="form-control me-2" placeholder="Search by student, company, or designation" />
       <button class="btn btn-outline-secondary" type="submit">Search</button>
     </form>
 
@@ -151,7 +204,7 @@ onMounted(() => {
               <button
                 class="btn btn-sm"
                 :class="c.is_active ? 'btn-danger' : 'btn-success'"
-                @click="toggleActive(c)"
+                @click="c.is_active ? blacklistCompany(c) : toggleActive(c)"
               >
                 {{ c.is_active ? 'Blacklist' : 'Whitelist' }}
               </button>
@@ -164,7 +217,7 @@ onMounted(() => {
     <CollapsibleSection title="Registered Students">
       <table class="table">
         <tbody>
-          <tr v-for="s in registeredStudents" :key="s.id">
+          <tr v-for="s in pagedStudents" :key="s.id">
             <td>{{ s.name }}</td>
             <td class="text-end">
               <button
@@ -184,6 +237,23 @@ onMounted(() => {
           </tr>
         </tbody>
       </table>
+      <nav v-if="studentsPageCount > 1" class="d-flex justify-content-between align-items-center">
+        <button
+          class="btn btn-sm btn-outline-secondary"
+          :disabled="studentsPage === 1"
+          @click="studentsPage--"
+        >
+          Previous
+        </button>
+        <span class="text-muted small">Page {{ studentsPage }} of {{ studentsPageCount }}</span>
+        <button
+          class="btn btn-sm btn-outline-secondary"
+          :disabled="studentsPage === studentsPageCount"
+          @click="studentsPage++"
+        >
+          Next
+        </button>
+      </nav>
     </CollapsibleSection>
 
     <CollapsibleSection title="Company Applications">
@@ -200,7 +270,7 @@ onMounted(() => {
               </button>
               <button
                 class="btn btn-sm btn-outline-danger"
-                @click="decideCompany(c, COMPANY_APPROVAL_REJECTED)"
+                @click="rejectCompany(c)"
               >
                 Reject
               </button>
@@ -216,14 +286,16 @@ onMounted(() => {
           <tr>
             <th>#</th>
             <th>Drive Name</th>
+            <th>Company</th>
             <th></th>
             <th></th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(d, i) in ongoingDrives" :key="d.id">
+          <tr v-for="(d, i) in filteredOngoingDrives" :key="d.id">
             <td>{{ i + 1 }}</td>
             <td>{{ d.title }}</td>
+            <td>{{ d.company_name }}</td>
             <td><button class="btn btn-sm btn-outline-primary" @click="selectedDrive = d">View details</button></td>
             <td><button class="btn btn-sm btn-outline-success" @click="completeDrive(d)">Mark as complete</button></td>
           </tr>
@@ -244,8 +316,8 @@ onMounted(() => {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(a, i) in applications" :key="a.id">
-            <td>{{ i + 1 }}</td>
+          <tr v-for="(a, i) in pagedApplications" :key="a.id">
+            <td>{{ (applicationsPage - 1) * APPLICATIONS_PER_PAGE + i + 1 }}</td>
             <td>{{ a.student_name }}</td>
             <td>{{ a.job_title }}</td>
             <td>{{ a.company_name }}</td>
@@ -254,6 +326,23 @@ onMounted(() => {
           </tr>
         </tbody>
       </table>
+      <nav v-if="applicationsPageCount > 1" class="d-flex justify-content-between align-items-center">
+        <button
+          class="btn btn-sm btn-outline-secondary"
+          :disabled="applicationsPage === 1"
+          @click="applicationsPage--"
+        >
+          Previous
+        </button>
+        <span class="text-muted small">Page {{ applicationsPage }} of {{ applicationsPageCount }}</span>
+        <button
+          class="btn btn-sm btn-outline-secondary"
+          :disabled="applicationsPage === applicationsPageCount"
+          @click="applicationsPage++"
+        >
+          Next
+        </button>
+      </nav>
     </CollapsibleSection>
 
     <Modal :show="!!selectedDrive" title="Drive Details" @close="selectedDrive = null">
@@ -264,6 +353,7 @@ onMounted(() => {
             <p><strong>Job Description:</strong> {{ selectedDrive.description }}</p>
             <p><strong>Location:</strong> {{ selectedDrive.location }}</p>
             <p><strong>Salary:</strong> {{ selectedDrive.salary }}</p>
+            <p><strong>Skills Required:</strong> {{ selectedDrive.skills?.map((s) => s.name).join(', ') }}</p>
           </div>
           <div class="col-4 text-center">
             <img
@@ -304,53 +394,60 @@ onMounted(() => {
       </template>
     </Modal>
 
-    <Modal :show="!!selectedStudent" title="Student Profile" @close="selectedStudent = null">
+    <Modal
+      :show="!!selectedStudent"
+      title="Student Profile"
+      size="lg"
+      @close="selectedStudent = null"
+    >
       <template v-if="selectedStudent">
-        <img
-          v-if="selectedStudent.photo_url"
-          :src="selectedStudent.photo_url"
-          alt="Student photo"
-          style="max-height: 4rem"
-          class="mb-2"
-        />
-        <p><strong>Name:</strong> {{ selectedStudent.name }}</p>
-        <p><strong>Branch:</strong> {{ selectedStudent.branch?.name }}</p>
-        <p><strong>Graduation Year:</strong> {{ selectedStudent.graduation_year }}</p>
-        <p><strong>CGPA:</strong> {{ selectedStudent.cgpa }}</p>
-        <p><strong>Skills:</strong> {{ selectedStudent.skills.map((s) => s.name).join(', ') }}</p>
-        <p><strong>Contact:</strong> {{ selectedStudent.contact }}</p>
+        <div class="d-flex gap-3 mb-3">
+          <img
+            v-if="selectedStudent.photo_url"
+            :src="selectedStudent.photo_url"
+            alt="Student photo"
+            class="rounded flex-shrink-0"
+            style="width: 96px; height: 96px; object-fit: cover"
+          />
+          <div class="row row-cols-2 g-2 flex-grow-1">
+            <div><strong>Name:</strong> {{ selectedStudent.name }}</div>
+            <div><strong>Branch:</strong> {{ selectedStudent.branch?.name }}</div>
+            <div><strong>Graduation Year:</strong> {{ selectedStudent.graduation_year }}</div>
+            <div><strong>CGPA:</strong> {{ selectedStudent.cgpa }}</div>
+            <div><strong>Email:</strong> {{ selectedStudent.email }}</div>
+            <div class="col-12"><strong>Skills:</strong> {{ selectedStudent.skills.map((s) => s.name).join(', ') }}</div>
+            <div class="col-12"><strong>Contact:</strong> {{ selectedStudent.contact }}</div>
+          </div>
+        </div>
         <a
           v-if="selectedStudent.resume_url"
           :href="selectedStudent.resume_url"
           download
-          class="btn btn-sm btn-outline-primary mb-2"
+          class="btn btn-sm btn-outline-primary mb-3"
         >
           View Resume
         </a>
         <h5>Application History</h5>
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Job Title</th>
-              <th>Company</th>
-              <th>Status</th>
-              <th>Date</th>
-              <th>Placement</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="a in selectedStudent.applications" :key="a.id">
-              <td>{{ a.job_title }}</td>
-              <td>{{ a.company_name }}</td>
-              <td>{{ statusLabel(APPLICATION_STATUSES, a.status) }}</td>
-              <td>{{ a.application_date }}</td>
-              <td>
-                <span v-if="a.placement">{{ a.placement.position_title }}</span>
-                <span v-else>—</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Job Title</th>
+                <th>Company</th>
+                <th>Status</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="a in selectedStudent.applications" :key="a.id">
+                <td>{{ a.job_title }}</td>
+                <td>{{ a.company_name }}</td>
+                <td>{{ statusLabel(APPLICATION_STATUSES, a.status) }}</td>
+                <td>{{ a.application_date?.slice(0, 10) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </template>
     </Modal>
   </div>

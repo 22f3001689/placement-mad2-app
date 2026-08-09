@@ -22,6 +22,11 @@ class Config:
     # Celery broker/result backend
     REDIS_URL = os.environ.get("REDIS_URL") or "redis://localhost:6379/0"
 
+    # API response cache (Milestone 8) - separate logical DB index from Celery's
+    # broker above, so clearing the cache never touches Celery's queue/results.
+    CACHE_REDIS_URL = os.environ.get("CACHE_REDIS_URL") or "redis://localhost:6379/1"
+    CACHE_DEFAULT_TTL = int(os.environ.get("CACHE_DEFAULT_TTL", "60"))
+
     # SMTP - all optional; unset MAIL_SERVER means "log instead of send" (see app/notifications.py)
     MAIL_SERVER = os.environ.get("MAIL_SERVER")
     MAIL_PORT = int(os.environ.get("MAIL_PORT", "587"))

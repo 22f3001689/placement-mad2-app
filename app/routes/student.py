@@ -7,8 +7,8 @@ from sqlalchemy.orm import joinedload
 from werkzeug.utils import secure_filename
 
 from app import db
+from app.cache import cached_response, invalidate
 from app.constants import (
-    COMPANY_APPROVAL_APPROVED,
     EXPORT_JOB_TYPE_CSV_EXPORT,
     JOB_POSITION_STATUS_COMPLETED,
     JOB_POSITION_STATUS_ONGOING,
@@ -82,9 +82,9 @@ def _organization_detail_payload(company):
 
 
 def _approved_drive_or_none(drive_id):
-    """Returns the drive if it exists and its Company is currently approved, else None."""
+    """Returns the drive if it exists and its Company is currently visible to students, else None."""
     drive = JobPosition.query.get(drive_id)
-    if drive is None or drive.company.approval_status != COMPANY_APPROVAL_APPROVED:
+    if drive is None or not drive.company.is_visible_to_students:
         return None
     return drive
 
@@ -113,6 +113,7 @@ def _drive_detail_payload(drive):
         "eligibility_criteria": drive.eligibility_criteria,
         "salary": drive.salary,
         "location": drive.location,
+        "skills": [{"id": s.id, "name": s.name} for s in drive.skills],
         "company_name": drive.company.company_name,
         "company_logo_url": static_url(drive.company.logo_path),
         "status": drive.status,
@@ -191,18 +192,32 @@ def update_profile():
         )
 
     db.session.commit()
+    invalidate("admin_students")
     logger.info("Profile updated: student_id=%s", student.id)
     return jsonify(_profile_payload(student)), 200
 
 
 @student_bp.route("/organizations", methods=["GET"])
 @role_required(ROLE_STUDENT)
+@cached_response("orgs")
 def list_organizations():
-    query = Company.query.filter_by(approval_status=COMPANY_APPROVAL_APPROVED)
+    query = Company.query.filter(Company.is_visible_to_students)
 
     q = request.args.get("q")
     if q:
-        query = query.filter(Company.company_name.ilike(f"%{q}%"))
+        # "Search Companies, Job Titles or Skills" - a company also matches if one of
+        # its own Drives' title/skills matches, not just its own name.
+        query = query.filter(
+            or_(
+                Company.company_name.ilike(f"%{q}%"),
+                Company.job_positions.any(
+                    or_(
+                        JobPosition.title.ilike(f"%{q}%"),
+                        JobPosition.skills.any(Skill.name.ilike(f"%{q}%")),
+                    )
+                ),
+            )
+        )
 
     return jsonify([_organization_payload(c) for c in query.all()]), 200
 
@@ -210,9 +225,11 @@ def list_organizations():
 @student_bp.route("/organizations/<int:company_id>", methods=["GET"])
 @role_required(ROLE_STUDENT)
 def get_organization(company_id):
-    company = Company.query.filter_by(
-        id=company_id, approval_status=COMPANY_APPROVAL_APPROVED
-    ).first()
+    company = (
+        Company.query.filter_by(id=company_id)
+        .filter(Company.is_visible_to_students)
+        .first()
+    )
     if company is None:
         return jsonify({"error": "Company not found"}), 404
 
@@ -221,11 +238,12 @@ def get_organization(company_id):
 
 @student_bp.route("/drives", methods=["GET"])
 @role_required(ROLE_STUDENT)
+@cached_response("drives")
 def list_drives():
     query = (
         JobPosition.query.join(Company, JobPosition.company_id == Company.id)
         .filter(JobPosition.status == JOB_POSITION_STATUS_ONGOING)
-        .filter(Company.approval_status == COMPANY_APPROVAL_APPROVED)
+        .filter(Company.is_visible_to_students)
     )
 
     company_id = request.args.get("company_id")
@@ -239,7 +257,7 @@ def list_drives():
                 Company.company_name.ilike(f"%{q}%"),
                 JobPosition.title.ilike(f"%{q}%"),
                 JobPosition.drive_name.ilike(f"%{q}%"),
-                JobPosition.skills_required.ilike(f"%{q}%"),
+                JobPosition.skills.any(Skill.name.ilike(f"%{q}%")),
             )
         )
 

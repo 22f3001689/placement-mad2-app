@@ -1,11 +1,13 @@
 from datetime import datetime
 
 from flask_login import UserMixin
+from sqlalchemy.ext.hybrid import hybrid_property
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from app import db, login
 from app.constants import (
     APPLICATION_STATUS_APPLIED,
+    COMPANY_APPROVAL_APPROVED,
     COMPANY_APPROVAL_PENDING,
     EXPORT_JOB_STATUS_PENDING,
     JOB_POSITION_STATUS_ONGOING,
@@ -51,6 +53,18 @@ class Company(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     user = db.relationship("User", backref=db.backref("company_profile", uselist=False))
+
+    @hybrid_property
+    def is_visible_to_students(self):
+        """Approved and not blacklisted - the single gate for student-facing visibility."""
+        return self.approval_status == COMPANY_APPROVAL_APPROVED and self.user.is_active
+
+    @is_visible_to_students.expression
+    def is_visible_to_students(cls):
+        return db.and_(
+            cls.approval_status == COMPANY_APPROVAL_APPROVED,
+            cls.user.has(is_active=True),
+        )
 
     def __repr__(self):
         return f"<Company {self.company_name}>"
@@ -110,6 +124,18 @@ class Student(db.Model):
         return f"<Student {self.name}>"
 
 
+job_position_skill = db.Table(
+    "job_position_skill",
+    db.Column(
+        "job_position_id",
+        db.Integer,
+        db.ForeignKey("job_position.id"),
+        primary_key=True,
+    ),
+    db.Column("skill_id", db.Integer, db.ForeignKey("skill.id"), primary_key=True),
+)
+
+
 class JobPosition(db.Model):
     """A recruitment opening posted by a Company. Also referred to as a Placement Drive."""
 
@@ -122,16 +148,19 @@ class JobPosition(db.Model):
     eligibility_criteria = db.Column(db.Text, nullable=True)
     salary = db.Column(db.Integer, nullable=True)
     location = db.Column(db.String(150), nullable=True)
-    skills_required = db.Column(db.Text, nullable=True)
     application_deadline = db.Column(db.DateTime, nullable=False)
     status = db.Column(
         db.String(20), nullable=False, default=JOB_POSITION_STATUS_ONGOING
     )
+    closed_by_admin = db.Column(db.Boolean, nullable=False, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     company = db.relationship(
         "Company",
         backref=db.backref("job_positions", cascade="all, delete-orphan"),
+    )
+    skills = db.relationship(
+        "Skill", secondary=job_position_skill, backref="job_positions"
     )
 
     def __repr__(self):
