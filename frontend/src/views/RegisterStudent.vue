@@ -22,7 +22,7 @@ async function onSubmit() {
     await post('/auth/register/student', {
       username: username.value,
       password: password.value,
-      email: email.value,
+      email: email.value || null,
       name: name.value,
       branch_id: branchId.value || null,
     })
@@ -38,20 +38,20 @@ async function onSubmit() {
     <h1 class="mb-4">Register as Student</h1>
     <form @submit.prevent="onSubmit">
       <div class="mb-3">
-        <label class="form-label">Full name</label>
+        <label class="form-label">Full name <span class="text-danger">*</span></label>
         <input v-model="name" type="text" class="form-control" required />
       </div>
       <div class="mb-3">
-        <label class="form-label">Username</label>
+        <label class="form-label">Username <span class="text-danger">*</span></label>
         <input v-model="username" type="text" class="form-control" required />
       </div>
       <div class="mb-3">
-        <label class="form-label">Password</label>
+        <label class="form-label">Password <span class="text-danger">*</span></label>
         <input v-model="password" type="password" class="form-control" minlength="6" required />
       </div>
       <div class="mb-3">
         <label class="form-label">Email</label>
-        <input v-model="email" type="email" class="form-control" required />
+        <input v-model="email" type="email" class="form-control" placeholder="Defaults to firstname.lastname@example.com" />
       </div>
       <div class="mb-3">
         <label class="form-label">Branch</label>

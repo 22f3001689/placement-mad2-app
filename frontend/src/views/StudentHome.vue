@@ -1,12 +1,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { get, post, postForm } from '../api/http.js'
-import { auth, logout } from '../state/auth.js'
+import { auth } from '../state/auth.js'
 import Modal from '../components/Modal.vue'
 import { APPLICATION_STATUSES, EXPORT_JOB_STATUSES, statusLabel } from '../constants.js'
-
-const router = useRouter()
 
 const organizations = ref([])
 const applications = ref([])
@@ -104,11 +101,6 @@ async function applyToDrive() {
   await loadApplications()
 }
 
-async function onLogout() {
-  await logout()
-  router.push('/login')
-}
-
 onMounted(() => {
   loadOrganizations()
   loadApplications()
@@ -134,7 +126,6 @@ onMounted(() => {
         >
           Download Placement Confirmation
         </a>
-        <button class="btn btn-danger" @click="onLogout">Log out</button>
       </div>
     </div>
 

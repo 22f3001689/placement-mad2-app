@@ -4,7 +4,7 @@ from flask_login import current_user, login_required, login_user, logout_user
 from app import db
 from app.constants import ROLE_COMPANY, ROLE_STUDENT
 from app.models import Branch, Company, Skill, Student, User
-from app.utils import branch_payload, get_logger
+from app.utils import branch_payload, default_email, get_logger
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
@@ -60,11 +60,12 @@ def register_student():
     name = data.get("name")
     branch_id = data.get("branch_id")
 
-    if not all([username, password, email, name]):
+    if not all([username, password, name]):
         return (
-            jsonify({"error": "username, password, email and name are required"}),
+            jsonify({"error": "username, password and name are required"}),
             400,
         )
+    email = email or default_email(name)
     error, status = _registration_error(username, password, email)
     if error:
         return jsonify({"error": error}), status

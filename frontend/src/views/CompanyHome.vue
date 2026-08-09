@@ -1,8 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { get, post, put } from '../api/http.js'
-import { auth, logout } from '../state/auth.js'
+import { auth } from '../state/auth.js'
 import Modal from '../components/Modal.vue'
 import {
   APPLICATION_STATUS_APPLIED,
@@ -17,8 +16,6 @@ import {
   TERMINAL_APPLICATION_STATUSES,
   statusLabel,
 } from '../constants.js'
-
-const router = useRouter()
 
 const upcomingDrives = ref([])
 const closedDrives = ref([])
@@ -162,11 +159,6 @@ async function markPlaced() {
   flashSaveMessage()
 }
 
-async function onLogout() {
-  await logout()
-  router.push('/login')
-}
-
 const showExports = ref(false)
 const exportJobs = ref([])
 
@@ -212,7 +204,6 @@ onMounted(loadDrives)
         <button class="btn btn-outline-secondary me-2" @click="openReports">
           Placement Reports
         </button>
-        <button class="btn btn-danger" @click="onLogout">Log out</button>
       </div>
     </div>
     <Transition name="fade">

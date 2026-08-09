@@ -3,7 +3,7 @@ import logging
 from flask import current_app, url_for
 
 from app.constants import APPLICATION_STATUS_PLACED
-from app.models import Placement
+from app.models import Placement, User
 
 logging.basicConfig(
     level=logging.INFO,
@@ -37,6 +37,18 @@ def static_path(path):
 def iso_or_none(value):
     """ISO-formats a date/datetime, or None if it's falsy."""
     return value.isoformat() if value else None
+
+
+def default_email(name):
+    """firstname.lastname@example.com derived from a full name, deduped on collision."""
+    parts = name.lower().split()
+    base = f"{parts[0]}.{parts[-1]}"
+    email = f"{base}@example.com"
+    suffix = 1
+    while User.query.filter_by(email=email).first():
+        suffix += 1
+        email = f"{base}{suffix}@example.com"
+    return email
 
 
 def branch_payload(branch):

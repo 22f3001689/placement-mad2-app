@@ -8,7 +8,9 @@ from app.constants import (
     COMPANY_APPROVAL_APPROVED,
     COMPANY_DECISION_STATUSES,
     JOB_POSITION_STATUS_COMPLETED,
+    JOB_POSITION_STATUS_ONGOING,
     ROLE_ADMIN,
+    ROLE_COMPANY,
 )
 from app.decorators import role_required
 from app.models import Application, Company, JobPosition, Student, User
@@ -103,6 +105,7 @@ def _student_detail_payload(student):
         "id": student.id,
         "user_id": student.user_id,
         "username": student.user.username,
+        "email": student.user.email,
         "is_active": student.user.is_active,
         "name": student.name,
         "branch": branch_payload(student.branch) if student.branch else None,
@@ -255,13 +258,36 @@ def toggle_active(user_id):
         return jsonify({"error": "Cannot deactivate the Admin account"}), 403
 
     user.is_active = not user.is_active
+
+    affected_drive_count = 0
+    if user.role == ROLE_COMPANY:
+        if not user.is_active:
+            filter_kwargs = {"status": JOB_POSITION_STATUS_ONGOING}
+            update_values = {
+                "status": JOB_POSITION_STATUS_COMPLETED,
+                "closed_by_admin": True,
+            }
+        else:
+            filter_kwargs = {"closed_by_admin": True}
+            update_values = {
+                "status": JOB_POSITION_STATUS_ONGOING,
+                "closed_by_admin": False,
+            }
+        affected_drive_count = JobPosition.query.filter_by(
+            company_id=user.company_profile.id, **filter_kwargs
+        ).update(update_values)
+
     db.session.commit()
     invalidate("admin_companies")
     invalidate("admin_students")
+    if user.role == ROLE_COMPANY:
+        invalidate("orgs")
+        invalidate("drives")
     logger.info(
-        "User active-status toggled: user_id=%s role=%s is_active=%s",
+        "User active-status toggled: user_id=%s role=%s is_active=%s affected_drives=%s",
         user.id,
         user.role,
         user.is_active,
+        affected_drive_count,
     )
     return jsonify({"id": user.id, "is_active": user.is_active}), 200

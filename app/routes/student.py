@@ -9,7 +9,6 @@ from werkzeug.utils import secure_filename
 from app import db
 from app.cache import cached_response, invalidate
 from app.constants import (
-    COMPANY_APPROVAL_APPROVED,
     EXPORT_JOB_TYPE_CSV_EXPORT,
     JOB_POSITION_STATUS_COMPLETED,
     JOB_POSITION_STATUS_ONGOING,
@@ -83,9 +82,9 @@ def _organization_detail_payload(company):
 
 
 def _approved_drive_or_none(drive_id):
-    """Returns the drive if it exists and its Company is currently approved, else None."""
+    """Returns the drive if it exists and its Company is currently visible to students, else None."""
     drive = JobPosition.query.get(drive_id)
-    if drive is None or drive.company.approval_status != COMPANY_APPROVAL_APPROVED:
+    if drive is None or not drive.company.is_visible_to_students:
         return None
     return drive
 
@@ -202,7 +201,7 @@ def update_profile():
 @role_required(ROLE_STUDENT)
 @cached_response("orgs")
 def list_organizations():
-    query = Company.query.filter_by(approval_status=COMPANY_APPROVAL_APPROVED)
+    query = Company.query.filter(Company.is_visible_to_students)
 
     q = request.args.get("q")
     if q:
@@ -226,9 +225,11 @@ def list_organizations():
 @student_bp.route("/organizations/<int:company_id>", methods=["GET"])
 @role_required(ROLE_STUDENT)
 def get_organization(company_id):
-    company = Company.query.filter_by(
-        id=company_id, approval_status=COMPANY_APPROVAL_APPROVED
-    ).first()
+    company = (
+        Company.query.filter_by(id=company_id)
+        .filter(Company.is_visible_to_students)
+        .first()
+    )
     if company is None:
         return jsonify({"error": "Company not found"}), 404
 
@@ -242,7 +243,7 @@ def list_drives():
     query = (
         JobPosition.query.join(Company, JobPosition.company_id == Company.id)
         .filter(JobPosition.status == JOB_POSITION_STATUS_ONGOING)
-        .filter(Company.approval_status == COMPANY_APPROVAL_APPROVED)
+        .filter(Company.is_visible_to_students)
     )
 
     company_id = request.args.get("company_id")

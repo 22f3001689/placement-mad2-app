@@ -16,6 +16,7 @@ from app.models import (
     Student,
     User,
 )
+from app.utils import default_email
 
 BRANCHES = [
     (
@@ -281,7 +282,7 @@ def seed_database():
         students = []
 
         john_user = User(
-            username="john_doe", email="john.doe@example.com", role="student"
+            username="john_doe", email=default_email("John Doe"), role="student"
         )
         john_user.set_password("student123")
         db.session.add(john_user)
@@ -303,7 +304,7 @@ def seed_database():
 
         for i, (first, last) in enumerate(STUDENT_NAMES):
             username = f"{first.lower()}.{last.lower()}"
-            email = f"{username}@example.com"
+            email = default_email(f"{first} {last}")
             user = User(username=username, email=email, role="student")
             user.set_password("student123")
             db.session.add(user)

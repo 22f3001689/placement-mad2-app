@@ -6,6 +6,7 @@
 ##############################################################################
 VENV_DIR = venv
 PYTHON=${VENV_DIR}/bin/python
+SYSTEM_PYTHON = python3.11
 
 ##############################################################################
 # Development set up
@@ -14,7 +15,7 @@ install: venv activate install-dev frontend-install frontend-build
 
 venv: # Create new venv if not exists
 	@echo "Creating new virtual environment $(GREEN_ITALIC)$(VENV_DIR)$(DEFAULT) if not exists..."
-	@test -d $(VENV_DIR) || python3 -m venv $(VENV_DIR) --upgrade-deps
+	@test -d $(VENV_DIR) || $(SYSTEM_PYTHON) -m venv $(VENV_DIR) --upgrade-deps
 	@$(PYTHON) --version
 	@echo "Done! You may use $(GREEN_ITALIC)source $(VENV_DIR)/bin/activate$(DEFAULT) to activate it and install packages manually, or use Makefile targets for all project setup routines.\n"
 
