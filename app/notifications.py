@@ -1,5 +1,5 @@
 """Email delivery: renders a stored EmailTemplate and sends it via SMTP, or
-logs the rendered content if no SMTP server is configured (see FR-002/FR-002a).
+logs the rendered content if no SMTP server is configured.
 """
 
 import smtplib
@@ -16,8 +16,7 @@ logger = get_logger(__name__)
 def send_email(to_email, template_key, context):
     """Renders EmailTemplate[template_key] with context and sends/logs it.
 
-    Never raises - a delivery failure is logged, not surfaced to the caller,
-    per the spec's "must never crash the job" edge case.
+    Never raises - a delivery failure is logged, not surfaced to the caller.
     """
     template = EmailTemplate.query.filter_by(key=template_key).first()
     if template is None:

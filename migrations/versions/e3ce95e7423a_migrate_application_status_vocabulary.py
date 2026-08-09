@@ -17,8 +17,7 @@ depends_on = None
 
 def upgrade():
     # Data-only change: no column/type change, only the valid values shift
-    # (waiting -> interview, selected -> offer), per Milestone 6's status
-    # vocabulary (see specs/006-application-history-status/research.md).
+    # (waiting -> interview, selected -> offer).
     op.execute("UPDATE application SET status = 'interview' WHERE status = 'waiting'")
     op.execute("UPDATE application SET status = 'offer' WHERE status = 'selected'")
 

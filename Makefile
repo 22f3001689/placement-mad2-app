@@ -1,4 +1,4 @@
-.PHONY: clean db-clean db-reset venv activate format install db-init db-migrate db-seed frontend-install frontend-build redis-up redis-down celery-worker celery-beat backend frontend dev stop
+.PHONY: clean db-clean db-reset venv activate format install db-init db-migrate db-seed frontend-install frontend-build redis-up redis-down celery-worker celery-beat backend frontend dev dev-full stop
 -include .env
 
 ##############################################################################
@@ -52,6 +52,16 @@ frontend: # Run the Vite frontend dev server on :5173 (proxies /api to :5000)
 
 dev: # Run backend + frontend dev servers together; Ctrl+C stops both
 	@trap 'kill 0' INT TERM; \
+	$(MAKE) backend & \
+	$(MAKE) frontend & \
+	wait
+
+dev-full: # Run Redis + Celery worker/beat + backend + frontend together; Ctrl+C stops all
+	@$(MAKE) redis-up
+	@trap '$(MAKE) redis-down' EXIT; \
+	trap 'kill 0' INT TERM; \
+	$(MAKE) celery-worker & \
+	$(MAKE) celery-beat & \
 	$(MAKE) backend & \
 	$(MAKE) frontend & \
 	wait

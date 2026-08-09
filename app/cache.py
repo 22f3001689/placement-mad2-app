@@ -1,9 +1,7 @@
 """Redis-backed response cache for a handful of hot listing endpoints.
 
-Every cache key is `cache:<namespace>:<raw query string>` - see
-specs/008-api-caching/research.md for why. Every Redis call is wrapped so a
-cache failure (unavailable, or erroring mid-request) falls back to the
-uncached path silently, per this project's local-demo-first constitution.
+Cache key is `cache:<namespace>:<raw query string>`. Every Redis call is
+wrapped so a cache failure just falls back to the uncached path silently.
 """
 
 from functools import wraps

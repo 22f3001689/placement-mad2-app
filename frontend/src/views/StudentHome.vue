@@ -3,11 +3,10 @@ import { ref, onMounted } from 'vue'
 import { get, post, postForm } from '../api/http.js'
 import { auth } from '../state/auth.js'
 import Modal from '../components/Modal.vue'
-import { APPLICATION_STATUSES, EXPORT_JOB_STATUSES, statusLabel } from '../constants.js'
+import { APPLICATION_STATUSES, statusLabel } from '../constants.js'
 
 const organizations = ref([])
 const applications = ref([])
-const q = ref('')
 
 const showEditProfile = ref(false)
 const profile = ref(null)
@@ -24,33 +23,9 @@ const organizationDrives = ref([])
 const selectedDrive = ref(null)
 
 const showHistory = ref(false)
-const hasPlacement = ref(false)
-
-const showExports = ref(false)
-const exportJobs = ref([])
-
-async function loadExports() {
-  exportJobs.value = await get('/student/exports')
-}
-
-async function requestExport() {
-  await post('/student/exports')
-  await loadExports()
-}
-
-async function openExports() {
-  await loadExports()
-  showExports.value = true
-}
-
-async function checkPlacement() {
-  const res = await fetch('/api/student/placement/confirmation', { credentials: 'include' })
-  hasPlacement.value = res.ok
-}
 
 async function loadOrganizations() {
-  const query = q.value ? `?q=${encodeURIComponent(q.value)}` : ''
-  organizations.value = await get(`/student/organizations${query}`)
+  organizations.value = await get('/student/organizations')
 }
 
 async function loadApplications() {
@@ -104,7 +79,7 @@ async function applyToDrive() {
 onMounted(() => {
   loadOrganizations()
   loadApplications()
-  checkPlacement()
+  get('/student/profile').then((p) => (profile.value = p))
 })
 </script>
 
@@ -115,24 +90,8 @@ onMounted(() => {
       <div>
         <button class="btn btn-outline-secondary me-2" @click="openEditProfile">Edit Profile</button>
         <button class="btn btn-outline-secondary me-2" @click="showHistory = true">History</button>
-        <button class="btn btn-outline-secondary me-2" @click="openExports">
-          Export My Applications
-        </button>
-        <a
-          v-if="hasPlacement"
-          href="/api/student/placement/confirmation"
-          download
-          class="btn btn-outline-success me-2"
-        >
-          Download Placement Confirmation
-        </a>
       </div>
     </div>
-
-    <form class="d-flex mb-4" @submit.prevent="loadOrganizations">
-      <input v-model="q" class="form-control me-2" placeholder="Search companies / skills" />
-      <button class="btn btn-outline-secondary" type="submit">Search</button>
-    </form>
 
     <h3>Organizations</h3>
     <table class="table">
@@ -274,71 +233,39 @@ onMounted(() => {
       </template>
     </Modal>
 
-    <Modal :show="showHistory" title="Student Application History" @close="showHistory = false">
-      <p><strong>Student Name:</strong> {{ profile?.name || auth.user?.username }}</p>
+    <Modal
+      :show="showHistory"
+      title="Student Application History"
+      size="xl"
+      @close="showHistory = false"
+    >
+      <p><strong>Student Name:</strong> {{ profile?.name || auth.user?.student_name }}</p>
       <p><strong>Department:</strong> {{ profile?.branch?.name }}</p>
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Drive No.</th>
-            <th>Interview</th>
-            <th>Job Title</th>
-            <th>Results</th>
-            <th>Remark</th>
-            <th>Placement</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(a, i) in applications" :key="a.id">
-            <td>{{ i + 1 }}</td>
-            <td>{{ a.interview_mode || 'Not scheduled' }}</td>
-            <td>{{ a.job_title }}</td>
-            <td>{{ statusLabel(APPLICATION_STATUSES, a.status) }}</td>
-            <td>{{ a.company_remark || 'None' }}</td>
-            <td>
-              <span v-if="a.placement">
-                {{ a.placement.position_title }} · ₹{{ a.placement.salary }} · joining
-                {{ a.placement.joining_date }}
-              </span>
-              <span v-else>—</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Drive No.</th>
+              <th>Company Name</th>
+              <th>Interview</th>
+              <th>Job Title</th>
+              <th>Results</th>
+              <th>Remark</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(a, i) in applications" :key="a.id">
+              <td>{{ i + 1 }}</td>
+              <td>{{ a.company_name }}</td>
+              <td>{{ a.interview_mode || 'Not scheduled' }}</td>
+              <td>{{ a.job_title }}</td>
+              <td>{{ statusLabel(APPLICATION_STATUSES, a.status) }}</td>
+              <td>{{ a.company_remark || 'None' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </Modal>
 
-    <Modal :show="showExports" title="Export My Applications" @close="showExports = false">
-      <button class="btn btn-sm btn-primary mb-2" @click="requestExport">
-        Request New Export
-      </button>
-      <button class="btn btn-sm btn-outline-secondary mb-2 ms-2" @click="loadExports">
-        Refresh
-      </button>
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Requested</th>
-            <th>Status</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="job in exportJobs" :key="job.id">
-            <td>{{ job.created_at }}</td>
-            <td>{{ statusLabel(EXPORT_JOB_STATUSES, job.status) }}</td>
-            <td>
-              <a
-                v-if="job.download_url"
-                :href="job.download_url"
-                download
-                class="btn btn-sm btn-outline-primary"
-              >
-                Download
-              </a>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </Modal>
   </div>
 </template>

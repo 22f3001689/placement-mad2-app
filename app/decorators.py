@@ -10,11 +10,7 @@ logger = get_logger(__name__)
 
 
 def role_required(*roles):
-    """Require an active login AND one of the given roles, in that order.
-
-    401 (via login_required) if there's no session at all; 403 if there is one
-    but it's the wrong role for this endpoint.
-    """
+    """401 if not logged in, 403 if logged in as the wrong role."""
 
     def decorator(view):
         @wraps(view)
@@ -37,12 +33,7 @@ def role_required(*roles):
 
 
 def company_approved_required(view):
-    """Require a logged-in Company whose approval_status is "approved".
-
-    401/403 the same way role_required("company") does, plus a distinguishing
-    403 if the Company is logged in but not yet approved (per Milestone 2's
-    auth contract).
-    """
+    """Same as role_required(ROLE_COMPANY), plus a 403 if not yet approved."""
 
     @wraps(view)
     @role_required(ROLE_COMPANY)
