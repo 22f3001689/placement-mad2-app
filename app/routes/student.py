@@ -1,6 +1,6 @@
 import os
 
-from flask import Blueprint, Response, current_app, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 from flask_login import current_user
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
@@ -9,24 +9,14 @@ from werkzeug.utils import secure_filename
 from app import db
 from app.cache import cached_response, invalidate
 from app.constants import (
-    EXPORT_JOB_TYPE_CSV_EXPORT,
     JOB_POSITION_STATUS_COMPLETED,
     JOB_POSITION_STATUS_ONGOING,
     ROLE_STUDENT,
 )
 from app.decorators import role_required
-from app.models import (
-    Application,
-    Branch,
-    Company,
-    ExportJob,
-    JobPosition,
-    Placement,
-    Skill,
-)
+from app.models import Application, Branch, Company, JobPosition, Skill
 from app.utils import (
     branch_payload,
-    export_job_payload,
     get_logger,
     iso_or_none,
     placement_payloads_by_application_id,
@@ -325,75 +315,3 @@ def list_applications():
     )
 
 
-@student_bp.route("/exports", methods=["POST"])
-@role_required(ROLE_STUDENT)
-def create_export():
-    # Deferred import: app.tasks -> app.celery_app -> create_app() -> this
-    # blueprint would be circular if imported at module level.
-    from app.tasks import process_export_job
-
-    job = ExportJob(user_id=current_user.id, job_type=EXPORT_JOB_TYPE_CSV_EXPORT)
-    db.session.add(job)
-    db.session.commit()
-
-    try:
-        process_export_job.delay(job.id)
-    except Exception:
-        logger.exception("Could not enqueue export job_id=%s", job.id)
-        return (
-            jsonify(
-                {
-                    "error": "Export could not be scheduled - background jobs are unavailable"
-                }
-            ),
-            503,
-        )
-
-    logger.info("Export job created: job_id=%s student_id=%s", job.id, current_user.id)
-    return jsonify(export_job_payload(job)), 202
-
-
-@student_bp.route("/exports", methods=["GET"])
-@role_required(ROLE_STUDENT)
-def list_exports():
-    jobs = (
-        ExportJob.query.filter_by(user_id=current_user.id)
-        .order_by(ExportJob.created_at.desc())
-        .all()
-    )
-    return jsonify([export_job_payload(j) for j in jobs]), 200
-
-
-@student_bp.route("/exports/<int:job_id>", methods=["GET"])
-@role_required(ROLE_STUDENT)
-def get_export(job_id):
-    job = ExportJob.query.filter_by(id=job_id, user_id=current_user.id).first()
-    if job is None:
-        return jsonify({"error": "Export not found"}), 404
-    return jsonify(export_job_payload(job)), 200
-
-
-@student_bp.route("/placement/confirmation", methods=["GET"])
-@role_required(ROLE_STUDENT)
-def placement_confirmation():
-    placement = Placement.query.filter_by(
-        student_id=current_user.student_profile.id
-    ).first()
-    if placement is None:
-        return jsonify({"error": "No placement on file"}), 404
-
-    body = (
-        "Placement Confirmation\n"
-        "=======================\n\n"
-        f"Student: {current_user.student_profile.name}\n"
-        f"Position: {placement.position_title}\n"
-        f"Salary: {placement.salary}\n"
-        f"Joining Date: {placement.joining_date}\n"
-    )
-    return Response(
-        body,
-        mimetype="text/plain",
-        headers={
-            "Content-Disposition": "attachment; filename=placement_confirmation.txt"
-        },
-    )

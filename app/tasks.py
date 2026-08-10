@@ -20,7 +20,7 @@ from app.constants import (
     EXPORT_JOB_STATUS_RUNNING,
     EXPORT_JOB_TYPE_CSV_EXPORT,
     EXPORT_JOB_TYPE_PLACEMENT_REPORT,
-    ROLE_STUDENT,
+    JOB_POSITION_STATUS_ONGOING,
     TERMINAL_APPLICATION_STATUSES,
 )
 from app.models import Application, Company, ExportJob, JobPosition, Placement
@@ -45,15 +45,13 @@ CSV_HEADERS = [
     "status",
     "application_date",
     "interview_datetime",
-    "placement_position_title",
-    "placement_salary",
-    "placement_joining_date",
+    "placement_date",
 ]
 
 
 @celery.task
 def send_interview_reminders():
-    """Reminds each Student, once, of an upcoming interview (see FR-001/FR-007)."""
+    """Reminds each Student, once, of an upcoming interview."""
     now = datetime.utcnow()
     applications = Application.query.filter(
         Application.interview_datetime.isnot(None),
@@ -94,15 +92,11 @@ def _export_row(application, placements_by_application_id):
         application.status,
         iso_or_none(application.application_date),
         iso_or_none(application.interview_datetime),
-        placement.get("position_title", ""),
-        placement.get("salary", ""),
         placement.get("joining_date", ""),
     ]
 
 
 def _applications_for_export(user):
-    if user.role == ROLE_STUDENT:
-        return user.student_profile.applications
     return (
         Application.query.join(JobPosition)
         .filter(JobPosition.company_id == user.company_profile.id)
@@ -130,7 +124,7 @@ def _write_csv_export(job):
 
 @celery.task
 def process_export_job(job_id):
-    """Runs a user-triggered CSV export job (see FR-003/FR-005)."""
+    """Runs a user-triggered CSV export job."""
     job = ExportJob.query.get(job_id)
     if job is None:
         logger.warning("process_export_job called with unknown job_id=%s", job_id)
@@ -200,12 +194,55 @@ def _write_placement_report_html(job, company, applications, status_counts, plac
     job.file_path = relative_path
 
 
+def _placement_report_text(applications, placements):
+    placements_by_application_id = {p.application_id: p for p in placements}
+
+    applications_by_drive = {}
+    for application in applications:
+        applications_by_drive.setdefault(application.job_position.drive_name, []).append(
+            application
+        )
+
+    sections = []
+    for drive_name, drive_applications in applications_by_drive.items():
+        status_counts = Counter(a.status for a in drive_applications)
+        status_lines = "\n".join(
+            f"  - {status}: {count}" for status, count in status_counts.items()
+        )
+
+        placed = [
+            a for a in drive_applications if a.id in placements_by_application_id
+        ]
+        if placed:
+            placed_lines = "\n".join(
+                f"  {a.student.name} | {placements_by_application_id[a.id].joining_date}"
+                for a in placed
+            )
+            placed_section = (
+                "\n\nThe following are the placed candidates\n"
+                "Name | Placed on\n"
+                f"{placed_lines}"
+            )
+        else:
+            placed_section = ""
+
+        sections.append(f"{drive_name}\n\n{status_lines}{placed_section}")
+
+    return "\n\n".join(sections)
+
+
 @celery.task
 def generate_placement_reports():
     """Generates one HTML placement report per Company per reporting period,
-    skipping Companies with no data to report (see FR-006/FR-007).
+    for Companies that currently have an open Drive.
     """
-    companies = Company.query.filter_by(approval_status=COMPANY_APPROVAL_APPROVED).all()
+    companies = (
+        Company.query.filter_by(approval_status=COMPANY_APPROVAL_APPROVED)
+        .filter(
+            Company.job_positions.any(JobPosition.status == JOB_POSITION_STATUS_ONGOING)
+        )
+        .all()
+    )
 
     for company in companies:
         applications = (
@@ -258,7 +295,7 @@ def generate_placement_reports():
             "report_ready",
             {
                 "company_name": company.company_name,
-                "download_url": static_path(job.file_path),
+                "report_body": _placement_report_text(applications, placements),
                 "period_start": iso_or_none(period_start),
                 "period_end": iso_or_none(period_end),
             },

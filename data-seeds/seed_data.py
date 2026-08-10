@@ -16,6 +16,7 @@ from app.models import (
     Student,
     User,
 )
+from app.constants import INTERVIEW_MODES
 from app.utils import default_email
 
 BRANCHES = [
@@ -68,8 +69,8 @@ EMAIL_TEMPLATES = [
         "report_ready",
         "Placement report ready for {company_name}",
         (
-            "Hi,\n\nA new placement report for {company_name} covering "
-            "{period_start} to {period_end} is ready to download:\n{download_url}"
+            "Hi,\n\nHere is the placement report for {company_name} covering "
+            "{period_start} to {period_end}:\n\n{report_body}"
         ),
     ),
 ]
@@ -463,16 +464,24 @@ def seed_database():
             "ongoing",
         )
 
+        # A "placed"/"rejected"/"offer" outcome always implies an interview already
+        # happened - only "applied"/"shortlisted" precede one.
+        INTERVIEWED_STATUSES = ("placed", "rejected", "offer")
+
         def apply_and_decide(
             student, drive, deadline, status, offset_days=10, remark=None
         ):
+            application_date = deadline - timedelta(days=offset_days)
             application = Application(
                 student_id=student.id,
                 job_position_id=drive.id,
-                application_date=deadline - timedelta(days=offset_days),
+                application_date=application_date,
                 status=status,
                 company_remark=remark,
             )
+            if status in INTERVIEWED_STATUSES:
+                application.interview_datetime = application_date + timedelta(days=2)
+                application.interview_mode = INTERVIEW_MODES[student.id % len(INTERVIEW_MODES)]
             db.session.add(application)
             db.session.commit()
             return application
@@ -577,7 +586,7 @@ def seed_database():
             s[21], open_intern, now, "interview", offset_days=5
         )
         interview_1.interview_datetime = now + timedelta(minutes=2)
-        interview_1.interview_mode = "Video Call"
+        interview_1.interview_mode = "Virtual"
         db.session.commit()
 
         # Nimbus DevOps: s[22..24]

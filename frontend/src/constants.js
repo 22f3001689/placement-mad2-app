@@ -1,4 +1,4 @@
-// Mirrors app/constants.py — single source of truth for these fixed vocabularies.
+// Mirrors app/constants.py
 
 export const APPLICATION_STATUS_APPLIED = 'applied'
 export const APPLICATION_STATUS_INTERVIEW = 'interview'
@@ -16,6 +16,8 @@ export const APPLICATION_STATUSES = [
 ]
 
 export const TERMINAL_APPLICATION_STATUSES = [APPLICATION_STATUS_PLACED, APPLICATION_STATUS_REJECTED]
+
+export const INTERVIEW_MODES = ['In-Person', 'Virtual']
 
 export const JOB_POSITION_STATUS_ONGOING = 'ongoing'
 export const JOB_POSITION_STATUS_COMPLETED = 'completed'

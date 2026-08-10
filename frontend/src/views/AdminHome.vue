@@ -159,7 +159,6 @@ onMounted(() => {
 
 <template>
   <div class="container" style="margin-top: 3rem">
-    <!-- Section 1: welcome, totals, search -->
     <h1 class="mb-3">Welcome Admin</h1>
 
     <div class="row g-3 mb-3" v-if="totals">
@@ -194,7 +193,6 @@ onMounted(() => {
       <button class="btn btn-outline-secondary" type="submit">Search</button>
     </form>
 
-    <!-- Section 2: five collapsible subsections -->
     <CollapsibleSection title="Registered Companies">
       <table class="table">
         <tbody>

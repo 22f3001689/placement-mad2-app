@@ -71,7 +71,7 @@ class Company(db.Model):
 
 
 class Branch(db.Model):
-    """Master list of Student branches (e.g. CSE, ME) - fixed set, not self-service."""
+    """Seeded list of Student branches (CSE, ME, ...) - not user-editable."""
 
     __tablename__ = "branch"
     id = db.Column(db.Integer, primary_key=True)
@@ -84,7 +84,7 @@ class Branch(db.Model):
 
 
 class Skill(db.Model):
-    """Master list of Skills a Student can pick from - fixed set, not self-service."""
+    """Skills a Student or Drive can be tagged with, picked from this fixed list."""
 
     __tablename__ = "skill"
     id = db.Column(db.Integer, primary_key=True)
@@ -204,9 +204,8 @@ class Application(db.Model):
 class Placement(db.Model):
     """The final, durable placement outcome for a Student.
 
-    Deliberately not cascaded from Company/JobPosition/Application - a Placement is a
-    snapshot that must keep reading correctly even if the company is deactivated or the
-    job position is later closed (see spec.md edge cases).
+    Not cascaded from Company/JobPosition/Application - it's a snapshot that has to
+    keep reading correctly even after the company is deactivated or the drive closed.
     """
 
     __tablename__ = "placement"

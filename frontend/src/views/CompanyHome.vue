@@ -11,6 +11,7 @@ import {
   APPLICATION_STATUS_REJECTED,
   APPLICATION_STATUSES,
   EXPORT_JOB_STATUSES,
+  INTERVIEW_MODES,
   JOB_POSITION_STATUS_COMPLETED,
   JOB_POSITION_STATUS_ONGOING,
   TERMINAL_APPLICATION_STATUSES,
@@ -70,6 +71,7 @@ const isFinalStatus = (status) => TERMINAL_APPLICATION_STATUSES.includes(status)
 
 const pendingStatus = ref('')
 const pendingInterviewDatetime = ref('')
+const pendingInterviewMode = ref(INTERVIEW_MODES[0])
 const pendingRemark = ref('')
 const placementJoiningDate = ref('')
 
@@ -113,13 +115,12 @@ async function openApplications(drive) {
 
 async function reviewApplication(application) {
   selectedApplication.value = await get(`/company/applications/${application.id}`)
-  // The dropdown only offers decision statuses (no "applied"), so an application still
-  // "applied" must default to the first selectable option to keep the select's visible
-  // value in sync with pendingStatus - otherwise Save sees no diff and does nothing.
+  // "applied" isn't a selectable option, so default to the first one instead
   pendingStatus.value = decisionStatuses.some((s) => s.value === selectedApplication.value.status)
     ? selectedApplication.value.status
     : decisionStatuses[0].value
   pendingInterviewDatetime.value = selectedApplication.value.interview_datetime || ''
+  pendingInterviewMode.value = selectedApplication.value.interview_mode || INTERVIEW_MODES[0]
   pendingRemark.value = selectedApplication.value.company_remark || ''
   applicationsForDrive.value = null
 }
@@ -130,11 +131,17 @@ async function backToApplications() {
 }
 
 async function saveDecision() {
-  if (pendingInterviewDatetime.value && pendingInterviewDatetime.value !== selectedApplication.value.interview_datetime) {
+  const interviewChanged =
+    pendingInterviewDatetime.value &&
+    (pendingInterviewDatetime.value !== selectedApplication.value.interview_datetime ||
+      pendingInterviewMode.value !== selectedApplication.value.interview_mode)
+  if (interviewChanged) {
     await post(`/company/applications/${selectedApplication.value.id}/interview`, {
       interview_datetime: pendingInterviewDatetime.value,
+      mode: pendingInterviewMode.value,
     })
     selectedApplication.value.interview_datetime = pendingInterviewDatetime.value
+    selectedApplication.value.interview_mode = pendingInterviewMode.value
   }
   const remarkChanged = pendingRemark.value !== (selectedApplication.value.company_remark || '')
   if (pendingStatus.value !== selectedApplication.value.status || remarkChanged) {
@@ -239,22 +246,20 @@ onMounted(loadDrives)
           <th>Sr No.</th>
           <th>Drive Name</th>
           <th></th>
-          <th></th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="(d, i) in closedDrives" :key="d.id">
           <td>{{ i + 1 }}</td>
           <td>{{ d.drive_name }}</td>
-          <td><button class="btn btn-sm btn-outline-primary" @click="openApplications(d)">View</button></td>
-          <td><button class="btn btn-sm btn-outline-secondary" @click="editDrive(d)">Edit</button></td>
+          <td><button class="btn btn-sm btn-outline-secondary" @click="editDrive(d)">Update</button></td>
         </tr>
       </tbody>
     </table>
 
     <Modal
       :show="showCreateDrive"
-      :title="editingDriveId ? 'Edit Drive' : 'Create a Drive'"
+      :title="editingDriveId ? 'Update Drive' : 'Create a Drive'"
       @close="showCreateDrive = false; editingDriveId = null; newDrive = emptyDrive(); selectedSkillIds = []"
     >
       <form @submit.prevent="saveDrive">
@@ -355,9 +360,13 @@ onMounted(loadDrives)
             <label class="form-label">Interview Date/Time</label>
             <input
               type="datetime-local"
-              class="form-control"
+              class="form-control mb-2"
               v-model="pendingInterviewDatetime"
             />
+            <label class="form-label">Interview Mode</label>
+            <select class="form-select" v-model="pendingInterviewMode">
+              <option v-for="mode in INTERVIEW_MODES" :key="mode" :value="mode">{{ mode }}</option>
+            </select>
           </div>
           <div v-if="[APPLICATION_STATUS_OFFER, APPLICATION_STATUS_REJECTED].includes(pendingStatus)" class="mb-2">
             <label class="form-label">Comments</label>

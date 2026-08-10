@@ -22,7 +22,6 @@ def get_logger(name):
 
 
 def static_url(path):
-    """Builds a URL for a file under app/static/, or None if path is falsy."""
     return url_for("static", filename=path) if path else None
 
 
@@ -35,7 +34,6 @@ def static_path(path):
 
 
 def iso_or_none(value):
-    """ISO-formats a date/datetime, or None if it's falsy."""
     return value.isoformat() if value else None
 
 

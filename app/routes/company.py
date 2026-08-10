@@ -11,6 +11,7 @@ from app.constants import (
     APPLICATION_STATUS_PLACED,
     EXPORT_JOB_TYPE_CSV_EXPORT,
     EXPORT_JOB_TYPE_PLACEMENT_REPORT,
+    INTERVIEW_MODES,
     JOB_POSITION_STATUS_COMPLETED,
     TERMINAL_APPLICATION_STATUSES,
 )
@@ -336,9 +337,12 @@ def schedule_interview(application_id):
             400,
         )
 
+    mode = data.get("mode")
+    if mode is not None and mode not in INTERVIEW_MODES:
+        return jsonify({"error": f"mode must be one of {INTERVIEW_MODES}"}), 400
+
     application = _own_application_or_404(application_id)
     application.interview_datetime = parsed
-    mode = data.get("mode")
     if mode is not None:
         application.interview_mode = mode
     db.session.commit()
